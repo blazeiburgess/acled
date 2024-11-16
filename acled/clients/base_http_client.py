@@ -2,6 +2,7 @@ import requests
 from typing import Any, Dict, Optional
 from os import environ
 from ..exceptions import AcledMissingAuthError
+from ..log import AcledLogger
 
 
 class BaseHttpClient(object):
@@ -19,6 +20,7 @@ class BaseHttpClient(object):
             raise AcledMissingAuthError("Email is required")
         self.session = requests.Session()
         self.session.headers.update({'Content-Type': 'application/json'})
+        self.log = AcledLogger().get_logger()
 
     def _get(
             self, endpoint: str, params: Optional[Dict[str, Any]] = None
@@ -30,13 +32,12 @@ class BaseHttpClient(object):
         params['email'] = self.email
         url = f"{self.BASE_URL}{endpoint}"
 
-        # Debug: print the constructed URL
-        print(f"Constructed URL: {url}")
-        print(f"Query Parameters: {params}")
+        self.log.debug(f"Constructed URL: {url}")
+        self.log.debug(f"Query Parameters: {params}")
 
         response = self.session.get(url, params=params)
         response.raise_for_status()
-        print(response.content)
+        self.log.debug(f"Response content:\n{response.content}")
         return response.json()
 
     def _post(
