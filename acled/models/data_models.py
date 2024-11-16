@@ -1,0 +1,36 @@
+from typing import Optional, TypedDict
+import datetime
+
+
+class AcledEvent(TypedDict, total=False):
+    event_id_cnty: str
+    event_date: datetime.date
+    year: int
+    time_precision: int
+    disorder_type: str
+    event_type: str
+    sub_event_type: str
+    actor1: str
+    assoc_actor_1: Optional[str]
+    inter1: int
+    actor2: Optional[str]
+    assoc_actor_2: Optional[str]
+    inter2: Optional[int]
+    interaction: int
+    civilian_targeting: Optional[str]
+    iso: int
+    region: str
+    country: str
+    admin1: Optional[str]
+    admin2: Optional[str]
+    admin3: Optional[str]
+    location: str
+    latitude: float
+    longitude: float
+    geo_precision: int
+    source: str
+    source_scale: str
+    notes: str
+    fatalities: int
+    tags: Optional[str]
+    timestamp: datetime.datetime
