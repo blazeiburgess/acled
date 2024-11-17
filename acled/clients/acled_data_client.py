@@ -52,6 +52,7 @@ class AcledDataClient(BaseHttpClient):
         timestamp: Optional[Union[int, str, date]] = None,
         export_type: Optional[str | ExportType] = ExportType.JSON,
         limit: int = 50,
+        page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
     ) -> List[AcledEvent]:
         """
@@ -173,7 +174,11 @@ class AcledDataClient(BaseHttpClient):
                 params['export_type'] = export_type.value
             else:
                 params['export_type'] = export_type
+
+        if isinstance(page, int):
+            params['page'] = page
         params['limit'] = limit if limit else 50
+
 
         # Perform the API request
         try:
