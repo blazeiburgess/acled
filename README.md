@@ -1,3 +1,5 @@
+from acled.models import AcledEvent
+
 # ACLED API Wrapper
 
 A Python library that wraps the ACLED API.
@@ -10,10 +12,10 @@ Use [Poetry](https://python-poetry.org/) to install the package:
 poetry add acled
 ```
 
-Or install via `pip` (after building):
+Or install via `pip`:
 
 ```bash
-pip install acled
+pip install -e .
 ```
 
 ## Usage
@@ -27,17 +29,18 @@ You can set the required API key and Email variables with environment variables 
 
 ```python
 from acled import AcledClient
-
+from acled.models import AcledEvent
+from typing import List, Dict
 # Initialize the client
 client = AcledClient()
 
 # Fetch data with optional filters
-filters = {
+filters: Dict[str, int | str] = {
     'limit': 10,
     'event_date': '2023-01-01|2023-01-31'
 }
 
-events = client.acled_data_client.get_data(params=filters)
+events: List[AcledEvent] = client.get_data(params=filters)
 
 # Iterate over events
 for event in events:
@@ -49,6 +52,8 @@ for event in events:
 
 ```python
 from acled import AcledClient
+from acled.models import AcledEvent
+from typing import List
 # assuming you are using a local.py file
 from .local import api_key, email
 
@@ -61,7 +66,7 @@ filters = {
     'event_date': '2023-01-01|2023-01-31'
 }
 
-events = client.acled_data_client.get_data(params=filters)
+events: List[AcledEvent] = client.get_data(params=filters)
 
 # Iterate over events
 for event in events:
