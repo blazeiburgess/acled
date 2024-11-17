@@ -2,7 +2,9 @@ from acled.models import AcledEvent
 
 # ACLED API Wrapper
 
-A Python library that unofficially wraps the ACLED API.
+A Python library that unofficially wraps the ACLE (Armed Conflict Location & Event Data) API.
+
+See the project here: https://acleddata.com/
 
 ## TODO
 
