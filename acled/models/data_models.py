@@ -41,3 +41,25 @@ class Actor(TypedDict, total=False):
     first_event_date: datetime.date
     last_event_date: datetime.date
     event_count: int
+
+class Country(TypedDict, total=False):
+    country: str
+    iso: int
+    iso3: str
+    first_event_date: datetime.date
+    last_event_date: datetime.date
+    event_count: int
+
+class Region(TypedDict, total=False):
+    region: int
+    region_name: str
+    first_event_date: datetime.date
+    last_event_date: datetime.date
+    event_count: int
+
+class ActorType(TypedDict, total=False):
+    actor_type_id: int
+    actor_type_name: str
+    first_event_date: datetime.date
+    last_event_date: datetime.date
+    event_count: int
