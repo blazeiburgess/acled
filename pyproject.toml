@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "acled"
-version = "0.1.5"
+version = "0.1.6"
 description = "A Python library that unofficially wraps the ACLED API."
 authors = ["Blaze Burgess <blaze.i.burgess@gmail.com>"]
 license = "GPL 3"
@@ -16,5 +16,5 @@ python = "^3.8"
 requests = "^2.26.0"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
