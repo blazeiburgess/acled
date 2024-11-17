@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "acled"
 version = "0.1.4"
-description = "A Python library that wraps the ACLED API."
+description = "A Python library that unofficially wraps the ACLED API."
 authors = ["Blaze Burgess <blaze.i.burgess@gmail.com>"]
 license = "GPL 3"
 readme = "README.md"

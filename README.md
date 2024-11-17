@@ -2,7 +2,7 @@ from acled.models import AcledEvent
 
 # ACLED API Wrapper
 
-A Python library that wraps the ACLED API.
+A Python library that unofficially wraps the ACLED API.
 
 ## TODO
 

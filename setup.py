@@ -9,7 +9,7 @@ setup(
     ],
     author="Your Name",
     author_email="blaze.i.burgess@gmail.com",
-    description="A Python library for interacting with ACLED data",
+    description="An unofficial Python library for interacting with ACLED data",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/blazeiburgess/acled",
