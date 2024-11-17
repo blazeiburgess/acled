@@ -73,7 +73,3 @@ for event in events:
 All requests require a valid API key and the email that is registered to that API key.
 
 ACLED is an amazing service provided at no cost so please be respectful and measured in your usage.
-
-## License
-
-This project is licensed under the GPL 3 License.
