@@ -5,8 +5,8 @@ description = "A Python library that wraps the ACLED API."
 authors = ["Blaze Burgess <blaze.i.burgess@gmail.com>"]
 license = "GPL 3"
 readme = "README.md"
-homepage = "https://github.com/blaze.i.burgess/acled-api-wrapper"
-repository = "https://github.com/blaze.i.burgess/acled-api-wrapper"
+homepage = "https://github.com/blaze.i.burgess/acled"
+repository = "https://github.com/blaze.i.burgess/acled"
 packages = [
     { include = "acled" },
 ]
