@@ -15,16 +15,10 @@ See the project here: https://acleddata.com/
 
 ## Installation
 
-Use [Poetry](https://python-poetry.org/) to install the package:
+Install via `pip`:
 
 ```bash
-poetry add acled
-```
-
-Or install via `pip`:
-
-```bash
-pip install -e .
+pip install acled
 ```
 
 ## Usage
