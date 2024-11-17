@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="acled",
-    version="0.1.4",
+    version="0.1.5",
     packages=find_packages(exclude=["tests"]),
     install_requires=[
         "requests==2.32.3",
