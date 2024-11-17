@@ -4,6 +4,13 @@ from acled.models import AcledEvent
 
 A Python library that wraps the ACLED API.
 
+## TODO
+
+- Add testing
+- Add client for deleted api, add method to access from main client
+- Add workflows in github
+- Better document more advanced features (e.g. filter type changes = vs. > vs. < vs. LIKE). They should work now (partially tested), but are a little obscure.
+
 ## Installation
 
 Use [Poetry](https://python-poetry.org/) to install the package:
