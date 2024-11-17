@@ -16,6 +16,7 @@ class AcledClient:
         self.api_key = api_key
         self.email = email
         self.acled_data_client = AcledDataClient(api_key, email)
+        self.actor_client = AcledClient(api_key, email)
 
 
     @property
