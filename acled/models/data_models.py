@@ -34,3 +34,10 @@ class AcledEvent(TypedDict, total=False):
     fatalities: int
     tags: Optional[str]
     timestamp: datetime.datetime
+
+
+class Actor(TypedDict, total=False):
+    actor_name: str
+    first_event_date: datetime.date
+    last_event_date: datetime.date
+    event_count: int
