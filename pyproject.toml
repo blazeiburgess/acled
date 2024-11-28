@@ -12,6 +12,13 @@ dependencies = [
     "requests>=2.26.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pylint",
+    "pytest-cov"
+]
+
 [project.urls]
 Homepage = "https://github.com/blazeiburgess/acled"
 Repository = "https://github.com/blazeiburgess/acled"
