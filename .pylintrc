@@ -1,0 +1,86 @@
+[MASTER]
+# A comma-separated list of package or module names from where C extensions may be loaded.
+extension-pkg-whitelist=
+
+# Add files or directories to the blacklist. They should be base names, not paths.
+ignore=CVS
+
+# Pickle collected data for later comparisons.
+persistent=yes
+
+# List of plugins (as comma separated values of python module names) to load, usually to
+# register additional checkers.
+load-plugins=
+
+[MESSAGES CONTROL]
+# Only show warnings with the listed confidence levels. Leave empty to show all. Valid levels: HIGH, INFERENCE, INFERENCE_FAILURE, UNDEFINED.
+confidence=
+
+[REPORTS]
+# Set the output format. Available formats: text, parseable, colorized, json, json:pretty, msvs (visual studio), pylint, html, json:html, gitlab.
+output-format=text
+
+# Tells whether to display a full report or only the messages
+reports=no
+
+[FORMAT]
+# Maximum number of characters on a single line.
+max-line-length=135
+
+# Regexp for a line that is allowed to be longer than the limit.
+ignore-long-lines=^\s*(# )?<?https?://\S+>?$
+
+[BASIC]
+# Naming style matching correct argument names.
+argument-naming-style=snake_case
+
+# Naming style matching correct attribute names.
+attr-naming-style=snake_case
+
+# Naming style matching correct class names.
+class-naming-style=PascalCase
+
+# Naming style matching correct constant names.
+const-naming-style=UPPER_CASE
+
+# Naming style matching correct function names.
+function-naming-style=snake_case
+
+# Naming style matching correct method names.
+method-naming-style=snake_case
+
+# Naming style matching correct module names.
+module-naming-style=snake_case
+
+# Naming style matching correct variable names.
+variable-naming-style=snake_case
+
+[DESIGN]
+# Maximum number of arguments for function / method
+max-args=0
+
+# Maximum number of attributes for a class (see R0902).
+max-attributes=7
+
+# Maximum number of boolean expressions in an if statement (see R0916).
+max-bool-expr=5
+
+# Maximum number of branches for function / method body (see R0912).
+max-branches=12
+
+# Maximum number of locals for function / method body (see R0914).
+max-locals=15
+
+# Maximum number of return / yield for function / method body (see R0911).
+max-returns=6
+
+# Maximum number of statements in function / method body (see R0915).
+max-statements=50
+
+[TYPECHECK]
+# Tells whether missing members accessed in mixin class should be ignored. A mixin class is detected if its name ends with "mixin" (case insensitive).
+ignore-mixin-members=yes
+
+[EXCEPTIONS]
+# Exceptions that will emit a warning when being caught. Defaults to "Exception"
+overgeneral-exceptions=builtins.Exception
