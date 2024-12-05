@@ -1,8 +1,8 @@
 import requests
 from typing import Any, Dict, Optional
 from os import environ
-from ..exceptions import AcledMissingAuthError
-from ..log import AcledLogger
+from acled.exceptions import AcledMissingAuthError
+from acled.log import AcledLogger
 
 
 class BaseHttpClient(object):

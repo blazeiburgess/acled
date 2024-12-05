@@ -1,10 +1,10 @@
 from typing import Optional
 
-from .acled_data_client import AcledDataClient
-from .actor_client import ActorClient
-from .actor_type_client import ActorTypeClient
-from .country_client import CountryClient
-from .region_client import RegionClient
+from acled.clients.acled_data_client import AcledDataClient
+from acled.clients.actor_client import ActorClient
+from acled.clients.actor_type_client import ActorTypeClient
+from acled.clients.country_client import CountryClient
+from acled.clients.region_client import RegionClient
 
 
 class AcledClient:

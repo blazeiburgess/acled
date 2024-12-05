@@ -3,10 +3,10 @@ from typing import Any, Dict, List, Optional, Union
 import requests
 from datetime import datetime, date
 
-from .base_http_client import BaseHttpClient
-from ..models.data_models import AcledEvent
-from ..models.enums import ExportType
-from ..exceptions import ApiError
+from acled.clients.base_http_client import BaseHttpClient
+from acled.models import AcledEvent
+from acled.models.enums import ExportType
+from acled.exceptions import ApiError
 
 
 class AcledDataClient(BaseHttpClient):

@@ -1,5 +1,3 @@
-# tests/test_base_http_client.py
-
 import pytest
 from unittest.mock import patch, MagicMock
 

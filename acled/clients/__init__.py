@@ -1,3 +1,2 @@
-from .client import AcledClient
-from .acled_data_client import AcledDataClient
-from .base_http_client import BaseHttpClient
+from acled.clients.client import AcledClient, AcledDataClient
+from acled.clients.base_http_client import BaseHttpClient
