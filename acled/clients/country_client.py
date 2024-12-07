@@ -86,10 +86,10 @@ class CountryClient(BaseHttpClient):
             if response.get('success'):
                 country_list = response.get('data', [])
                 return [self._parse_country(country) for country in country_list]
-            else:
-                error_info = response.get('error', [{'message': 'Unknown error'}])[0]
-                error_message = error_info.get('message', 'Unknown error')
-                raise ApiError(f"API Error: {error_message}")
+
+            error_info = response.get('error', [{'message': 'Unknown error'}])[0]
+            error_message = error_info.get('message', 'Unknown error')
+            raise ApiError(f"API Error: {error_message}")
         except requests.HTTPError as e:
             raise ApiError(f"HTTP Error: {str(e)}")
 

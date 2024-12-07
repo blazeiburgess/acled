@@ -1,6 +1,8 @@
-import requests
 from typing import Any, Dict, Optional
 from os import environ
+
+import requests
+
 from acled.exceptions import AcledMissingAuthError
 from acled.log import AcledLogger
 
