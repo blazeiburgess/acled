@@ -2,10 +2,10 @@ from typing import Any, Dict, List, Optional, Union
 import requests
 from datetime import datetime, date
 
-from .base_http_client import BaseHttpClient
-from ..models.data_models import Country
-from ..models.enums import ExportType
-from ..exceptions import ApiError
+from acled.clients.base_http_client import BaseHttpClient
+from acled.models import Country
+from acled.models.enums import ExportType
+from acled.exceptions import ApiError
 
 class CountryClient(BaseHttpClient):
     """
@@ -86,10 +86,10 @@ class CountryClient(BaseHttpClient):
             if response.get('success'):
                 country_list = response.get('data', [])
                 return [self._parse_country(country) for country in country_list]
-            else:
-                error_info = response.get('error', [{'message': 'Unknown error'}])[0]
-                error_message = error_info.get('message', 'Unknown error')
-                raise ApiError(f"API Error: {error_message}")
+
+            error_info = response.get('error', [{'message': 'Unknown error'}])[0]
+            error_message = error_info.get('message', 'Unknown error')
+            raise ApiError(f"API Error: {error_message}")
         except requests.HTTPError as e:
             raise ApiError(f"HTTP Error: {str(e)}")
 

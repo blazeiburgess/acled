@@ -1,20 +1,35 @@
-[tool.poetry]
+[project]
 name = "acled"
-version = "0.1.6"
+version = "0.1.7"
 description = "A Python library that unofficially wraps the ACLED API."
-authors = ["Blaze Burgess <blaze.i.burgess@gmail.com>"]
-license = "GPL 3"
+authors = [
+    {name = "Blaze Burgess", email = "blaze.i.burgess@gmail.com"}
+]
+license = {text = "GPL 3"}
 readme = "README.md"
-homepage = "https://github.com/blazeiburgess/acled"
-repository = "https://github.com/blazeiburgess/acled"
-packages = [
-    { include = "acled" },
+requires-python = ">=3.8"
+dependencies = [
+    "requests>=2.26.0",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.8"
-requests = "^2.26.0"
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pylint",
+    "pytest-cov"
+]
+
+[project.urls]
+Homepage = "https://github.com/blazeiburgess/acled"
+Repository = "https://github.com/blazeiburgess/acled"
 
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["acled*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=acled --cov-report=term-missing"

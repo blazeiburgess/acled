@@ -1,1 +1,1 @@
-from .clients import AcledClient
+from acled.clients import AcledClient
