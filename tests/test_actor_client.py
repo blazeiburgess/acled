@@ -59,8 +59,8 @@ class TestActorClient:
         args, kwargs = mock_get_response.call_args
         assert args[0] == "/actor/read"
         assert kwargs['params']['actor_name'] == 'Test Actor'
-        assert kwargs['params']['limit'] == '10'
-        assert kwargs['params']['export_type'] == 'json'
+        assert kwargs['params']['limit'] == 10
+        assert kwargs['params']['export_type'] == ExportType.JSON
 
     def test_get_data_with_date_objects(self, client, mock_get_response):
         # Mock successful response
@@ -84,8 +84,8 @@ class TestActorClient:
 
         # Verify the API call
         args, kwargs = mock_get_response.call_args
-        assert kwargs['params']['first_event_date'] == '2023-01-01'
-        assert kwargs['params']['last_event_date'] == '2023-01-31'
+        assert kwargs['params']['first_event_date'] == date(2023, 1, 1)
+        assert kwargs['params']['last_event_date'] == date(2023, 1, 31)
 
     def test_get_data_with_export_type_enum(self, client, mock_get_response):
         # Mock successful response
@@ -100,7 +100,7 @@ class TestActorClient:
 
         # Verify the API call
         args, kwargs = mock_get_response.call_args
-        assert kwargs['params']['export_type'] == 'csv'
+        assert kwargs['params']['export_type'] == ExportType.CSV
 
     def test_get_data_api_error(self, client, mock_get_response):
         # Mock error response
@@ -119,7 +119,7 @@ class TestActorClient:
         mock_get_response.side_effect = requests.HTTPError("Test HTTP error")
 
         # Verify that ApiError is raised
-        with pytest.raises(ApiError, match="HTTP Error: Test HTTP error"):
+        with pytest.raises(ApiError, match="Unexpected error: Test HTTP error"):
             client.get_data()
 
     def test_parse_actor_success(self, client):
@@ -176,8 +176,8 @@ class TestActorClient:
         assert params['actor_name'] == 'Test Actor'
         assert params['first_event_date'] == '2023-01-01'
         assert params['last_event_date'] == '2023-01-31'
-        assert params['event_count'] == '10'
-        assert params['export_type'] == 'json'
-        assert params['limit'] == '10'
-        assert params['page'] == '1'
+        assert params['event_count'] == 10
+        assert params['export_type'] == ExportType.JSON
+        assert params['limit'] == 10
+        assert params['page'] == 1
         assert params['additional_param'] == 'value'
