@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Union
 
-import requests
 from datetime import datetime, date
 
 from acled.clients.base_http_client import BaseHttpClient
 from acled.models import AcledEvent
 from acled.models.enums import ExportType
-from acled.exceptions import ApiError
+from acled.exceptions import ApiError, NetworkError, TimeoutError, RateLimitError, RetryError, ServerError, ClientError
 
 
 class AcledDataClient(BaseHttpClient):
@@ -52,7 +51,7 @@ class AcledDataClient(BaseHttpClient):
         notes: Optional[str] = None,
         fatalities: Optional[int] = None,
         timestamp: Optional[Union[int, str, date]] = None,
-        export_type: Optional[str | ExportType] = ExportType.JSON,
+        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
         limit: int = 50,
         page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
@@ -91,7 +90,9 @@ class AcledDataClient(BaseHttpClient):
             notes (Optional[str]): Filter by notes (supports LIKE).
             fatalities (Optional[int]): Filter by number of fatalities.
             timestamp (Optional[Union[int, str, date]]): Filter by timestamp (>= value).
-            export_type (Optional[str]): Specify the export type ('json', 'xml', 'csv', etc.).
+            export_type (Optional[Union[str, ExportType]]): Specify the export type ('json', 'xml', 'csv', etc.).
+            limit (int): Number of records to retrieve (default is 50).
+            page (Optional[int]): Page number for pagination.
             query_params (Optional[Dict[str, Any]]): Additional query parameters (e.g., to use '_where' suffix).
 
         Returns:
@@ -99,100 +100,80 @@ class AcledDataClient(BaseHttpClient):
 
         Raises:
             ApiError: If there's an error with the API request or response.
+            NetworkError: For network connectivity issues.
+            TimeoutError: When the request times out.
+            RateLimitError: When API rate limits are exceeded.
+            ServerError: For 5xx server errors.
+            ClientError: For 4xx client errors.
+            RetryError: When maximum retry attempts are exhausted.
         """
-        params: Dict[str, Any] = query_params.copy() if query_params else {}
+        # Create a dictionary of all parameters that aren't None
+        params = {
+            'event_id_cnty': event_id_cnty,
+            'event_date': event_date,
+            'year': year,
+            'time_precision': time_precision,
+            'disorder_type': disorder_type,
+            'event_type': event_type,
+            'sub_event_type': sub_event_type,
+            'actor1': actor1,
+            'assoc_actor_1': assoc_actor_1,
+            'inter1': inter1,
+            'actor2': actor2,
+            'assoc_actor_2': assoc_actor_2,
+            'inter2': inter2,
+            'interaction': interaction,
+            'civilian_targeting': civilian_targeting,
+            'iso': iso,
+            'region': region,
+            'country': country,
+            'admin1': admin1,
+            'admin2': admin2,
+            'admin3': admin3,
+            'location': location,
+            'latitude': latitude,
+            'longitude': longitude,
+            'geo_precision': geo_precision,
+            'source': source,
+            'source_scale': source_scale,
+            'notes': notes,
+            'fatalities': fatalities,
+            'timestamp': timestamp,
+            'export_type': export_type,
+            'limit': limit or 50,
+            'page': page
+        }
 
-        # Map arguments to query parameters, handling type conversions
-        if event_id_cnty is not None:
-            params['event_id_cnty'] = event_id_cnty
-        if event_date is not None:
-            if isinstance(event_date, date):
-                event_date_str = event_date.strftime('%Y-%m-%d')
-            else:
-                event_date_str = event_date
-            params['event_date'] = event_date_str
-        if year is not None:
-            params['year'] = str(year)
-        if time_precision is not None:
-            params['time_precision'] = str(time_precision)
-        if disorder_type is not None:
-            params['disorder_type'] = disorder_type
-        if event_type is not None:
-            params['event_type'] = event_type
-        if sub_event_type is not None:
-            params['sub_event_type'] = sub_event_type
-        if actor1 is not None:
-            params['actor1'] = actor1
-        if assoc_actor_1 is not None:
-            params['assoc_actor_1'] = assoc_actor_1
-        if inter1 is not None:
-            params['inter1'] = str(inter1)
-        if actor2 is not None:
-            params['actor2'] = actor2
-        if assoc_actor_2 is not None:
-            params['assoc_actor_2'] = assoc_actor_2
-        if inter2 is not None:
-            params['inter2'] = str(inter2)
-        if interaction is not None:
-            params['interaction'] = str(interaction)
-        if civilian_targeting is not None:
-            params['civilian_targeting'] = civilian_targeting
-        if iso is not None:
-            params['iso'] = str(iso)
-        if region is not None:
-            params['region'] = str(region)
-        if country is not None:
-            params['country'] = country
-        if admin1 is not None:
-            params['admin1'] = admin1
-        if admin2 is not None:
-            params['admin2'] = admin2
-        if admin3 is not None:
-            params['admin3'] = admin3
-        if location is not None:
-            params['location'] = location
-        if latitude is not None:
-            params['latitude'] = str(latitude)
-        if longitude is not None:
-            params['longitude'] = str(longitude)
-        if geo_precision is not None:
-            params['geo_precision'] = str(geo_precision)
-        if source is not None:
-            params['source'] = source
-        if source_scale is not None:
-            params['source_scale'] = source_scale
-        if notes is not None:
-            params['notes'] = notes
-        if fatalities is not None:
-            params['fatalities'] = str(fatalities)
-        if timestamp is not None:
-            if isinstance(timestamp, date):
-                timestamp_str = timestamp.strftime('%Y-%m-%d')
-            else:
-                timestamp_str = str(timestamp)
-            params['timestamp'] = timestamp_str
-        if export_type is not None:
-            if isinstance(export_type, ExportType):
-                params['export_type'] = export_type.value
-            else:
-                params['export_type'] = export_type
+        # Remove None values
+        params = {k: v for k, v in params.items() if v is not None}
 
-        if isinstance(page, int):
-            params['page'] = page
-        params['limit'] = limit if limit else 50
+        # Add any additional query parameters
+        if query_params:
+            params.update(query_params)
 
+        # Log the request
+        self.log.info(f"Fetching ACLED data with {len(params)} parameters")
 
         # Perform the API request
         try:
             response = self._get(self.endpoint, params=params)
+
             if response.get('success'):
                 event_list = response.get('data', [])
+                self.log.info(f"Retrieved {len(event_list)} events from ACLED API")
                 return [self._parse_event(event) for event in event_list]
             else:
-                error_message = response.get('error', [{'message': 'Unknown error'}])[0]['message']
+                error_info = response.get('error', [{'message': 'Unknown error'}])[0]
+                error_message = error_info.get('message', 'Unknown error')
+                self.log.error(f"API Error: {error_message}")
                 raise ApiError(f"API Error: {error_message}")
-        except requests.HTTPError as e:
-            raise ApiError(f"HTTP Error: {str(e)}")
+
+        except (NetworkError, TimeoutError, RateLimitError, ServerError, ClientError, RetryError) as e:
+            # These exceptions are already logged in BaseHttpClient
+            raise
+        except Exception as e:
+            self.log.error(f"Unexpected error in get_data: {str(e)}")
+            raise ApiError(f"Unexpected error: {str(e)}")
 
     def _parse_event(self, event_data: Dict[str, Any]) -> AcledEvent:
         """
