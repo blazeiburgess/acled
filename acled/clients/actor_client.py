@@ -1,11 +1,10 @@
 from typing import Any, Dict, List, Optional, Union
-import requests
 from datetime import datetime, date
 
 from acled.clients.base_http_client import BaseHttpClient
 from acled.models import Actor
 from acled.models.enums import ExportType
-from acled.exceptions import ApiError
+from acled.exceptions import ApiError, NetworkError, TimeoutError, RateLimitError, RetryError, ServerError, ClientError
 
 
 class ActorClient(BaseHttpClient):
@@ -36,7 +35,7 @@ class ActorClient(BaseHttpClient):
             first_event_date (Optional[Union[str, date]]): Filter by first event date (format 'yyyy-mm-dd').
             last_event_date (Optional[Union[str, date]]): Filter by last event date (format 'yyyy-mm-dd').
             event_count (Optional[int]): Filter by event count.
-            export_type (Optional[str | ExportType]): Specify the export type ('json', 'xml', 'csv', etc.).
+            export_type (Optional[Union[str, ExportType]]): Specify the export type ('json', 'xml', 'csv', etc.).
             limit (int): Number of records to retrieve (default is 50).
             page (Optional[int]): Page number for pagination.
             query_params (Optional[Dict[str, Any]]): Additional query parameters.
@@ -46,45 +45,54 @@ class ActorClient(BaseHttpClient):
 
         Raises:
             ApiError: If there's an error with the API request or response.
+            NetworkError: For network connectivity issues.
+            TimeoutError: When the request times out.
+            RateLimitError: When API rate limits are exceeded.
+            ServerError: For 5xx server errors.
+            ClientError: For 4xx client errors.
+            RetryError: When maximum retry attempts are exhausted.
         """
-        params: Dict[str, Any] = query_params.copy() if query_params else {}
+        # Create a dictionary of all parameters that aren't None
+        params = {
+            'actor_name': actor_name,
+            'first_event_date': first_event_date,
+            'last_event_date': last_event_date,
+            'event_count': event_count,
+            'export_type': export_type,
+            'limit': limit,
+            'page': page
+        }
 
-        # Map arguments to query parameters, handling type conversions
-        if actor_name is not None:
-            params['actor_name'] = actor_name
-        if first_event_date is not None:
-            if isinstance(first_event_date, date):
-                params['first_event_date'] = first_event_date.strftime('%Y-%m-%d')
-            else:
-                params['first_event_date'] = first_event_date
-        if last_event_date is not None:
-            if isinstance(last_event_date, date):
-                params['last_event_date'] = last_event_date.strftime('%Y-%m-%d')
-            else:
-                params['last_event_date'] = last_event_date
-        if event_count is not None:
-            params['event_count'] = str(event_count)
-        if export_type is not None:
-            if isinstance(export_type, ExportType):
-                params['export_type'] = export_type.value
-            else:
-                params['export_type'] = export_type
-        params['limit'] = str(limit) if limit else '50'
-        if page is not None:
-            params['page'] = str(page)
+        # Remove None values
+        params = {k: v for k, v in params.items() if v is not None}
+
+        # Add any additional query parameters
+        if query_params:
+            params.update(query_params)
+
+        # Log the request
+        self.log.info(f"Fetching actor data with {len(params)} parameters")
 
         # Perform the API request
         try:
             response = self._get(self.endpoint, params=params)
+
             if response.get('success'):
                 actor_list = response.get('data', [])
+                self.log.info(f"Retrieved {len(actor_list)} actors from ACLED API")
                 return [self._parse_actor(actor) for actor in actor_list]
             else:
                 error_info = response.get('error', [{'message': 'Unknown error'}])[0]
                 error_message = error_info.get('message', 'Unknown error')
+                self.log.error(f"API Error: {error_message}")
                 raise ApiError(f"API Error: {error_message}")
-        except requests.HTTPError as e:
-            raise ApiError(f"HTTP Error: {str(e)}")
+
+        except (NetworkError, TimeoutError, RateLimitError, ServerError, ClientError, RetryError) as e:
+            # These exceptions are already logged in BaseHttpClient
+            raise
+        except Exception as e:
+            self.log.error(f"Unexpected error in get_data: {str(e)}")
+            raise ApiError(f"Unexpected error: {str(e)}")
 
     def _parse_actor(self, actor_data: Dict[str, Any]) -> Actor:
         """
