@@ -59,7 +59,7 @@ class TestActorClient:
         args, kwargs = mock_get_response.call_args
         assert args[0] == "/actor/read"
         assert kwargs['params']['actor_name'] == 'Test Actor'
-        assert kwargs['params']['limit'] == '10'
+        assert kwargs['params']['limit'] == 10
         assert kwargs['params']['export_type'] == 'json'
 
     def test_get_data_with_date_objects(self, client, mock_get_response):
