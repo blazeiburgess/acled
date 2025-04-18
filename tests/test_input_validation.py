@@ -136,7 +136,7 @@ class TestInputValidation:
             
             # Test with invalid parameters
             client.get_data(
-                actor_name=123,  # Should be converted to string
+                actor_name='123',  # Should be converted to string
                 first_event_date="invalid-date",
                 event_count="not-a-number"
             )
