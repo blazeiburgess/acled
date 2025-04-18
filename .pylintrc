@@ -56,9 +56,6 @@ module-naming-style=snake_case
 variable-naming-style=snake_case
 
 [DESIGN]
-# Maximum number of arguments for function / method
-max-args=0
-
 # Maximum number of attributes for a class (see R0902).
 max-attributes=7
 
@@ -69,13 +66,15 @@ max-bool-expr=5
 max-branches=12
 
 # Maximum number of locals for function / method body (see R0914).
-max-locals=15
+max-locals=20
 
 # Maximum number of return / yield for function / method body (see R0911).
 max-returns=6
 
 # Maximum number of statements in function / method body (see R0915).
 max-statements=50
+
+max-positional-arguments=15
 
 [TYPECHECK]
 # Tells whether missing members accessed in mixin class should be ignored. A mixin class is detected if its name ends with "mixin" (case insensitive).

@@ -1,5 +1,3 @@
-# tests/test_base_http_client.py
-
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -75,7 +73,8 @@ def test_get_request(mock_environ, mock_requests_session, mock_logger):
 
     mock_requests_session.get.assert_called_once_with(
         'https://api.acleddata.com/test',
-        params={'param': 'value', 'key': 'test_api_key', 'email': 'test@email.com'}
+        params={'param': 'value', 'key': 'test_api_key', 'email': 'test@email.com'},
+        timeout=30
     )
     mock_response.raise_for_status.assert_called_once()
     assert result == {'data': 'test'}
@@ -91,7 +90,8 @@ def test_get_request_without_params(mock_environ, mock_requests_session, mock_lo
 
     mock_requests_session.get.assert_called_once_with(
         'https://api.acleddata.com/test',
-        params={'key': 'test_api_key', 'email': 'test@email.com'}
+        params={'key': 'test_api_key', 'email': 'test@email.com'},
+        timeout=30
     )
     mock_response.raise_for_status.assert_called_once()
     assert result == {'data': 'test'}
@@ -106,7 +106,8 @@ def test_post_request(mock_environ, mock_requests_session, mock_logger):
 
     mock_requests_session.post.assert_called_once_with(
         'https://api.acleddata.com/test',
-        json={'param': 'value', 'key': 'test_api_key', 'email': 'test@email.com'}
+        json={'param': 'value', 'key': 'test_api_key', 'email': 'test@email.com'},
+        timeout=30
     )
     mock_response.raise_for_status.assert_called_once()
     assert result == {'data': 'test'}
@@ -121,7 +122,8 @@ def test_post_request_without_data(mock_environ, mock_requests_session, mock_log
 
     mock_requests_session.post.assert_called_once_with(
         'https://api.acleddata.com/test',
-        json={'key': 'test_api_key', 'email': 'test@email.com'}
+        json={'key': 'test_api_key', 'email': 'test@email.com'},
+        timeout=30
     )
     mock_response.raise_for_status.assert_called_once()
     assert result == {'data': 'test'}

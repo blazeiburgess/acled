@@ -2,12 +2,11 @@ import logging
 import os
 import sys
 from logging import Logger
-from threading import current_thread
-from multiprocessing import current_process
 
 
-class AcledLogger:
+class AcledLogger(object):
     _instance = None
+    logger: Logger
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -17,7 +16,7 @@ class AcledLogger:
 
     def _initialize(self):
         log_level = os.getenv('LOG_LEVEL', 'WARNING').upper()
-        self.logger: Logger = logging.getLogger("acled_logger")
+        self.logger = logging.getLogger("acled_logger")
         self.logger.setLevel(getattr(logging, log_level, logging.WARNING))
 
         handler = logging.StreamHandler(sys.stdout)
