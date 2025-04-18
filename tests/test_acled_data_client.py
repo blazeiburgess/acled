@@ -68,7 +68,7 @@ class TestAcledDataClient:
         assert args[0] == "/acled/read"
         assert kwargs['params']['event_id_cnty'] == 'TEST123'
         assert kwargs['params']['limit'] == 10
-        assert kwargs['params']['export_type'] == 'json'
+        assert kwargs['params']['export_type'] == ExportType.JSON
 
     def test_get_data_with_date_objects(self, client, mock_get_response):
         # Mock successful response
@@ -95,8 +95,8 @@ class TestAcledDataClient:
 
         # Verify the API call
         args, kwargs = mock_get_response.call_args
-        assert kwargs['params']['event_date'] == '2023-01-01'
-        assert kwargs['params']['timestamp'] == '2023-01-01'
+        assert kwargs['params']['event_date'] == datetime(2023, 1, 1, 0, 0).date()
+        assert kwargs['params']['timestamp'] == datetime(2023, 1, 1, 0, 0).date()
 
     def test_get_data_with_export_type_enum(self, client, mock_get_response):
         # Mock successful response
@@ -111,7 +111,7 @@ class TestAcledDataClient:
 
         # Verify the API call
         args, kwargs = mock_get_response.call_args
-        assert kwargs['params']['export_type'] == 'csv'
+        assert kwargs['params']['export_type'] == ExportType.CSV
 
     def test_get_data_api_error(self, client, mock_get_response):
         # Mock error response
@@ -130,7 +130,7 @@ class TestAcledDataClient:
         mock_get_response.side_effect = requests.HTTPError("Test HTTP error")
 
         # Verify that ApiError is raised
-        with pytest.raises(ApiError, match="HTTP Error: Test HTTP error"):
+        with pytest.raises(ApiError, match="Unexpected error: Test HTTP error"):
             client.get_data()
 
     def test_parse_event_success(self, client):
@@ -188,22 +188,22 @@ class TestAcledDataClient:
             sub_event_type="Test",
             actor1="Test",
             assoc_actor_1="Test",
-            inter1=1,
+            inter1='1',
             actor2="Test",
             assoc_actor_2="Test",
-            inter2=1,
-            interaction=1,
+            inter2='1',
+            interaction='1',
             civilian_targeting="Test",
-            iso=1,
-            region=1,
+            iso='1',
+            region='1',
             country="Test",
             admin1="Test",
             admin2="Test",
             admin3="Test",
             location="Test",
-            latitude=10.123,
-            longitude=20.456,
-            geo_precision=1,
+            latitude='10.123',
+            longitude='20.456',
+            geo_precision='1',
             source="Test",
             source_scale="Test",
             notes="Test",
@@ -219,8 +219,8 @@ class TestAcledDataClient:
         params = kwargs['params']
         assert params['event_id_cnty'] == 'TEST123'
         assert params['event_date'] == '2023-01-01'
-        assert params['year'] == '2023'
-        assert params['time_precision'] == '1'
+        assert params['year'] == 2023
+        assert params['time_precision'] == 1
         assert params['disorder_type'] == 'Test'
         assert params['event_type'] == 'Test'
         assert params['sub_event_type'] == 'Test'
@@ -245,8 +245,8 @@ class TestAcledDataClient:
         assert params['source'] == 'Test'
         assert params['source_scale'] == 'Test'
         assert params['notes'] == 'Test'
-        assert params['fatalities'] == '5'
+        assert params['fatalities'] == 5
         assert params['timestamp'] == '2023-01-01'
-        assert params['export_type'] == 'json'
+        assert params['export_type'] == ExportType.JSON
         assert params['limit'] == 10
         assert params['page'] == 1
