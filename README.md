@@ -6,9 +6,7 @@ See the project here: https://acleddata.com/
 
 ## TODO
 
-- Add testing
 - Add client for deleted api, add method to access from main client
-- Add workflows in github
 - Better document more advanced features (e.g. filter type changes = vs. > vs. < vs. LIKE). They should work now (partially tested), but are a little obscure.
 
 ## Installation
