@@ -1,15 +1,15 @@
-from typing import Any, Dict, Optional, Union, Type, TypeVar, cast
+from typing import Any, Dict, Optional, TypeVar
 from os import environ
 import time
 import random
-from datetime import date
+from datetime import date, datetime
 
 import requests
 from requests.exceptions import RequestException, Timeout, ConnectionError, HTTPError
 
 from acled.exceptions import (
     AcledMissingAuthError, ApiError, NetworkError, TimeoutError,
-    RateLimitError, RetryError, ServerError, ClientError
+    RetryError
 )
 from acled.log import AcledLogger
 
@@ -72,9 +72,9 @@ class BaseHttpClient(object):
         return processed_params
 
     def _request_with_retries(
-        self, 
-        method: str, 
-        endpoint: str, 
+        self,
+        method: str,
+        endpoint: str,
         params: Optional[Dict[str, Any]] = None,
         data: Optional[Dict[str, Any]] = None,
         timeout: Optional[int] = None
@@ -170,7 +170,7 @@ class BaseHttpClient(object):
                 last_exception = ApiError(f"Request error: {str(e)}")
             except Exception as e:
                 self.log.error(f"Unexpected error: {str(e)}")
-                raise ApiError(f"Unexpected error: {str(e)}")
+                raise ApiError(f"Unexpected error: {str(e)}") from e
 
             retries += 1
 
