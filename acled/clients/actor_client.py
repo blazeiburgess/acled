@@ -99,7 +99,7 @@ class ActorClient(BaseHttpClient):
             raise
         except Exception as e:
             self.log.error("Unexpected error in get_data: %s", str(e))
-            raise ApiError(f"Unexpected error: {str(e)}")
+            raise ApiError(f"Unexpected error: {str(e)}") from e
 
     def _parse_actor(self, actor_data: Dict[str, Any]) -> Actor:
         """
@@ -125,4 +125,4 @@ class ActorClient(BaseHttpClient):
 
             return actor_data
         except (ValueError, KeyError) as e:
-            raise ValueError(f"Error parsing actor data: {str(e)}")
+            raise ValueError(f"Error parsing actor data: {str(e)}") from e

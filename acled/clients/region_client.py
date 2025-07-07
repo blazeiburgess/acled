@@ -95,7 +95,7 @@ class RegionClient(BaseHttpClient):
                 error_message = error_info.get('message', 'Unknown error')
                 raise ApiError(f"API Error: {error_message}")
         except requests.HTTPError as e:
-            raise ApiError(f"HTTP Error: {str(e)}")
+            raise ApiError(f"HTTP Error: {str(e)}") from e
 
     def _parse_region(self, region_data: Dict[str, Any]) -> Region:
         """
@@ -128,4 +128,4 @@ class RegionClient(BaseHttpClient):
 
             return region_data  # This will be of type Region
         except (ValueError, KeyError) as e:
-            raise ValueError(f"Error parsing region data: {str(e)}")
+            raise ValueError(f"Error parsing region data: {str(e)}") from e

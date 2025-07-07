@@ -181,7 +181,7 @@ class AcledDataClient(BaseHttpClient):
             raise
         except Exception as e:
             self.log.error("Unexpected error in get_data: %s", str(e))
-            raise ApiError(f"Unexpected error: {str(e)}")
+            raise ApiError(f"Unexpected error: {str(e)}") from e
 
     def _parse_event(self, event_data: Dict[str, Any]) -> AcledEvent:
         """
@@ -211,4 +211,4 @@ class AcledDataClient(BaseHttpClient):
 
             return event_data
         except (ValueError, KeyError) as e:
-            raise ValueError(f"Error parsing event data: {str(e)}")
+            raise ValueError(f"Error parsing event data: {str(e)}") from e

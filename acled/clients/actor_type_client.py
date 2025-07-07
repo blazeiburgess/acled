@@ -94,7 +94,7 @@ class ActorTypeClient(BaseHttpClient):
                 error_message = error_info.get('message', 'Unknown error')
                 raise ApiError(f"API Error: {error_message}")
         except requests.HTTPError as e:
-            raise ApiError(f"HTTP Error: {str(e)}")
+            raise ApiError(f"HTTP Error: {str(e)}") from e
 
     def _parse_actor_type(self, actor_type_data: Dict[str, Any]) -> ActorType:
         """
@@ -127,4 +127,4 @@ class ActorTypeClient(BaseHttpClient):
 
             return actor_type_data  # This will be of type ActorType
         except (ValueError, KeyError) as e:
-            raise ValueError(f"Error parsing actor type data: {str(e)}")
+            raise ValueError(f"Error parsing actor type data: {str(e)}") from e

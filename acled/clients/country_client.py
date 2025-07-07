@@ -98,7 +98,7 @@ class CountryClient(BaseHttpClient):
             error_message = error_info.get('message', 'Unknown error')
             raise ApiError(f"API Error: {error_message}")
         except requests.HTTPError as e:
-            raise ApiError(f"HTTP Error: {str(e)}")
+            raise ApiError(f"HTTP Error: {str(e)}") from e
 
     def _parse_country(self, country_data: Dict[str, Any]) -> Country:
         """
@@ -130,4 +130,4 @@ class CountryClient(BaseHttpClient):
 
             return country_data  # This will be of type Country
         except (ValueError, KeyError) as e:
-            raise ValueError(f"Error parsing country data: {str(e)}")
+            raise ValueError(f"Error parsing country data: {str(e)}") from e
