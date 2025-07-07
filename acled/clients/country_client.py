@@ -6,8 +6,8 @@ by various criteria such as country name, ISO codes, and event dates.
 """
 
 from typing import Any, Dict, List, Optional, Union
-import requests
 from datetime import datetime, date
+import requests
 
 from acled.clients.base_http_client import BaseHttpClient
 from acled.models import Country

@@ -185,8 +185,7 @@ class BaseHttpClient(object):
         # If we've exhausted retries, raise the last exception or RetryError
         if last_exception:
             raise RetryError(f"Max retries ({self.MAX_RETRIES}) exceeded. Last error: {str(last_exception)}")
-        else:
-            raise RetryError(f"Max retries ({self.MAX_RETRIES}) exceeded.")
+        raise RetryError(f"Max retries ({self.MAX_RETRIES}) exceeded.")
 
     def _get(
             self, endpoint: str, params: Optional[Dict[str, Any]] = None
