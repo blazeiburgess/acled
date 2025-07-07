@@ -60,20 +60,45 @@ class AcledClient:
 
     @property
     def get_data(self):
+        """Returns the get_data method from the AcledDataClient.
+
+        Returns:
+            Callable: A method to fetch ACLED event data with various filters.
+        """
         return self._acled_data_client.get_data
 
     @property
     def get_actor_data(self):
+        """Returns the get_data method from the ActorClient.
+
+        Returns:
+            Callable: A method to fetch ACLED actor data with various filters.
+        """
         return self._actor_client.get_data
 
     @property
     def get_actor_type_data(self):
+        """Returns the get_data method from the ActorTypeClient.
+
+        Returns:
+            Callable: A method to fetch ACLED actor type data with various filters.
+        """
         return self._actor_type_client.get_data
 
     @property
     def get_country_data(self):
+        """Returns the get_data method from the CountryClient.
+
+        Returns:
+            Callable: A method to fetch ACLED country data with various filters.
+        """
         return self._country_client.get_data
 
     @property
     def get_region_data(self):
+        """Returns the get_data method from the RegionClient.
+
+        Returns:
+            Callable: A method to fetch ACLED region data with various filters.
+        """
         return self._region_client.get_data
