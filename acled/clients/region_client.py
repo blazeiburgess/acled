@@ -1,3 +1,11 @@
+"""Client module for accessing region data from the ACLED API.
+
+This module provides a client for retrieving information about geographical regions
+where events have been recorded in the ACLED database. It allows filtering by
+region ID, name, event dates, and event counts to retrieve specific regions and
+their statistics.
+"""
+
 from typing import Any, Dict, List, Optional, Union
 import requests
 from datetime import datetime, date
@@ -82,12 +90,11 @@ class RegionClient(BaseHttpClient):
             if response.get('success'):
                 region_list = response.get('data', [])
                 return [self._parse_region(region) for region in region_list]
-            else:
-                error_info = response.get('error', [{'message': 'Unknown error'}])[0]
-                error_message = error_info.get('message', 'Unknown error')
-                raise ApiError(f"API Error: {error_message}")
+            error_info = response.get('error', [{'message': 'Unknown error'}])[0]
+            error_message = error_info.get('message', 'Unknown error')
+            raise ApiError(f"API Error: {error_message}")
         except requests.HTTPError as e:
-            raise ApiError(f"HTTP Error: {str(e)}")
+            raise ApiError(f"HTTP Error: {str(e)}") from e
 
     def _parse_region(self, region_data: Dict[str, Any]) -> Region:
         """
@@ -104,14 +111,20 @@ class RegionClient(BaseHttpClient):
         """
         try:
             region_data['region'] = int(region_data.get('region', 0))
-            region_data['first_event_date'] = datetime.strptime(
-                region_data['first_event_date'], '%Y-%m-%d'
-            ).date()
-            region_data['last_event_date'] = datetime.strptime(
-                region_data['last_event_date'], '%Y-%m-%d'
-            ).date()
+
+            # Parse first_event_date if it's a string
+            if isinstance(region_data['first_event_date'], str):
+                region_data['first_event_date'] = datetime.strptime(
+                    region_data['first_event_date'], '%Y-%m-%d'
+                ).date()
+
+            # Parse last_event_date if it's a string
+            if isinstance(region_data['last_event_date'], str):
+                region_data['last_event_date'] = datetime.strptime(
+                    region_data['last_event_date'], '%Y-%m-%d'
+                ).date()
             region_data['event_count'] = int(region_data.get('event_count', 0))
 
             return region_data  # This will be of type Region
         except (ValueError, KeyError) as e:
-            raise ValueError(f"Error parsing region data: {str(e)}")
+            raise ValueError(f"Error parsing region data: {str(e)}") from e

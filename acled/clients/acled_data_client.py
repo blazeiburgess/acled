@@ -1,3 +1,11 @@
+"""Client module for accessing the main ACLED dataset.
+
+This module provides a client for retrieving event data from the ACLED database.
+It allows filtering by numerous criteria such as event type, date, location,
+actors involved, and many other attributes to retrieve specific conflict and
+disorder events from around the world.
+"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Union
@@ -152,7 +160,7 @@ class AcledDataClient(BaseHttpClient):
             params.update(query_params)
 
         # Log the request
-        self.log.info(f"Fetching ACLED data with {len(params)} parameters")
+        self.log.info("Fetching ACLED data with %s parameters", len(params))
 
         # Perform the API request
         try:
@@ -160,20 +168,19 @@ class AcledDataClient(BaseHttpClient):
 
             if response.get('success'):
                 event_list = response.get('data', [])
-                self.log.info(f"Retrieved {len(event_list)} events from ACLED API")
+                self.log.info("Retrieved %s events from ACLED API", len(event_list))
                 return [self._parse_event(event) for event in event_list]
-            else:
-                error_info = response.get('error', [{'message': 'Unknown error'}])[0]
-                error_message = error_info.get('message', 'Unknown error')
-                self.log.error(f"API Error: {error_message}")
-                raise ApiError(f"API Error: {error_message}")
+            error_info = response.get('error', [{'message': 'Unknown error'}])[0]
+            error_message = error_info.get('message', 'Unknown error')
+            self.log.error("API Error: %s", error_message)
+            raise ApiError(f"API Error: {error_message}")
 
         except (NetworkError, TimeoutError, RateLimitError, ServerError, ClientError, RetryError) as e:
             # These exceptions are already logged in BaseHttpClient
             raise
         except Exception as e:
-            self.log.error(f"Unexpected error in get_data: {str(e)}")
-            raise ApiError(f"Unexpected error: {str(e)}")
+            self.log.error("Unexpected error in get_data: %s", str(e))
+            raise ApiError(f"Unexpected error: {str(e)}") from e
 
     def _parse_event(self, event_data: Dict[str, Any]) -> AcledEvent:
         """
@@ -203,4 +210,4 @@ class AcledDataClient(BaseHttpClient):
 
             return event_data
         except (ValueError, KeyError) as e:
-            raise ValueError(f"Error parsing event data: {str(e)}")
+            raise ValueError(f"Error parsing event data: {str(e)}") from e

@@ -1,19 +1,38 @@
+"""Enumeration classes for the ACLED API.
+
+This module defines various enumeration classes used throughout the ACLED package
+to represent different types of data classifications, such as time precision,
+disorder types, export formats, actor types, and geographical regions.
+"""
+
 from enum import Enum
 
 
 class TimePrecision(Enum):
+    """Enumeration for the precision of event dates.
+
+    Represents the level of certainty about when an event occurred.
+    """
     EXACT_DATE = 1
     APPROXIMATE_DATE = 2
     ESTIMATED_DATE = 3
 
 
 class DisorderType(Enum):
+    """Enumeration for types of disorder events.
+
+    Categorizes events into political violence, demonstrations, or strategic developments.
+    """
     POLITICAL_VIOLENCE = "Political violence"
     DEMONSTRATIONS = "Demonstrations"
     STRATEGIC_DEVELOPMENTS = "Strategic developments"
 
 
 class ExportType(Enum):
+    """Enumeration for data export formats.
+
+    Defines the available formats for exporting ACLED data.
+    """
     JSON = "json"
     XML = "xml"
     CSV = "csv"
@@ -34,6 +53,12 @@ class Actor(Enum):
     FOREIGN_OTHERS = 8
 
 class Region(Enum):
+    """Enumeration for geographical regions in the ACLED dataset.
+
+    Represents the different geographical regions used for categorizing events
+    in the ACLED database. Some values are missing from the official documentation
+    and are represented with placeholder names.
+    """
     WESTERN_AFRICA = 1
     MIDDLE_AFRICA = 2
     EASTERN_AFRICA = 3

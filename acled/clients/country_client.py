@@ -1,6 +1,13 @@
+"""Client module for accessing country data from the ACLED API.
+
+This module provides a client for retrieving information about countries
+where events have been recorded in the ACLED database. It allows filtering
+by various criteria such as country name, ISO codes, and event dates.
+"""
+
 from typing import Any, Dict, List, Optional, Union
-import requests
 from datetime import datetime, date
+import requests
 
 from acled.clients.base_http_client import BaseHttpClient
 from acled.models import Country
@@ -91,7 +98,7 @@ class CountryClient(BaseHttpClient):
             error_message = error_info.get('message', 'Unknown error')
             raise ApiError(f"API Error: {error_message}")
         except requests.HTTPError as e:
-            raise ApiError(f"HTTP Error: {str(e)}")
+            raise ApiError(f"HTTP Error: {str(e)}") from e
 
     def _parse_country(self, country_data: Dict[str, Any]) -> Country:
         """
@@ -107,15 +114,20 @@ class CountryClient(BaseHttpClient):
             ValueError: If there's an error during parsing.
         """
         try:
-            country_data['first_event_date'] = datetime.strptime(
-                country_data['first_event_date'], '%Y-%m-%d'
-            ).date()
-            country_data['last_event_date'] = datetime.strptime(
-                country_data['last_event_date'], '%Y-%m-%d'
-            ).date()
+            # Parse first_event_date if it's a string
+            if isinstance(country_data['first_event_date'], str):
+                country_data['first_event_date'] = datetime.strptime(
+                    country_data['first_event_date'], '%Y-%m-%d'
+                ).date()
+
+            # Parse last_event_date if it's a string
+            if isinstance(country_data['last_event_date'], str):
+                country_data['last_event_date'] = datetime.strptime(
+                    country_data['last_event_date'], '%Y-%m-%d'
+                ).date()
             country_data['iso'] = int(country_data.get('iso', 0))
             country_data['event_count'] = int(country_data.get('event_count', 0))
 
             return country_data  # This will be of type Country
         except (ValueError, KeyError) as e:
-            raise ValueError(f"Error parsing country data: {str(e)}")
+            raise ValueError(f"Error parsing country data: {str(e)}") from e
