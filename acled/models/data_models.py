@@ -1,8 +1,20 @@
+"""Data model classes for the ACLED API.
+
+This module defines TypedDict classes that represent the structure of data
+returned by the ACLED API, including events, actors, countries, regions, and
+actor types.
+"""
+
 from typing import Optional, TypedDict
 import datetime
 
 
 class AcledEvent(TypedDict, total=False):
+    """TypedDict representing an ACLED event.
+
+    Contains all fields that describe an event in the ACLED database, including
+    its identifiers, date, location, actors involved, and other attributes.
+    """
     event_id_cnty: str
     event_date: datetime.date
     year: int
