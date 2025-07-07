@@ -1,3 +1,10 @@
+"""Client module for accessing actor data from the ACLED API.
+
+This module provides a client for retrieving information about actors involved
+in events recorded in the ACLED database. It allows filtering by actor name,
+event dates, and event counts to retrieve specific actors and their statistics.
+"""
+
 from typing import Any, Dict, List, Optional, Union
 from datetime import datetime, date
 
