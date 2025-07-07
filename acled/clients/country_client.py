@@ -1,3 +1,10 @@
+"""Client module for accessing country data from the ACLED API.
+
+This module provides a client for retrieving information about countries
+where events have been recorded in the ACLED database. It allows filtering
+by various criteria such as country name, ISO codes, and event dates.
+"""
+
 from typing import Any, Dict, List, Optional, Union
 import requests
 from datetime import datetime, date
