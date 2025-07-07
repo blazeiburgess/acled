@@ -10,7 +10,7 @@ import sys
 from logging import Logger
 
 
-class AcledLogger(object):
+class AcledLogger:
     """Singleton logger class for the ACLED package.
 
     This class implements the singleton pattern to ensure that only one logger
@@ -40,6 +40,11 @@ class AcledLogger(object):
         self.logger.addHandler(handler)
 
     def get_logger(self) -> Logger:
+        """Returns the configured logger instance.
+
+        Returns:
+            Logger: The configured logger instance for the ACLED package.
+        """
         return self.logger
 
 
