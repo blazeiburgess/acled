@@ -12,7 +12,7 @@ Install via `pip`:
 pip install acled
 ```
 
-## Authentication
+## Python Library Authentication
 
 All requests to the ACLED API require authentication with a valid API key and the email that is registered to that API key. You can obtain these by registering on the [ACLED website](https://acleddata.com/register/).
 
@@ -352,6 +352,60 @@ The library's behavior can be configured through environment variables:
 - `ACLED_RETRY_BACKOFF_FACTOR`: Backoff factor for calculating wait time between retries (default: 0.5)
 - `ACLED_REQUEST_TIMEOUT`: Request timeout in seconds (default: 30)
 
+## CLI Usage
+
+The library includes a command-line interface for easy data access:
+
+### Authentication
+
+First, authenticate with your ACLED credentials:
+
+```bash
+acled auth login
+```
+
+This securely stores your API key and email for future use.
+
+### Basic CLI Commands
+
+```bash
+# Get recent events from Syria
+acled data --country Syria --year 2024 --limit 10
+
+# Get data with table output
+acled data --country Nigeria --format table
+
+# Get data with specific filters
+acled data --country Yemen --event-type Battles --limit 5 --format summary
+
+# Save output to file
+acled data --country Afghanistan --year 2024 --output events.json
+
+# Get help for any command
+acled data --help
+```
+
+### CLI Authentication Options
+
+You can authenticate in three ways:
+
+1. **Secure login** (recommended):
+   ```bash
+   acled auth login
+   ```
+
+2. **Command-line options**:
+   ```bash
+   acled data --api-key YOUR_API_KEY --email YOUR_EMAIL --country Syria
+   ```
+
+3. **Environment variables**:
+   ```bash
+   export ACLED_API_KEY="your_api_key"
+   export ACLED_EMAIL="your_email"
+   acled data --country Syria
+   ```
+
 ## Important Notes
 
 ACLED is an amazing service provided at no cost, so please be respectful and measured in your usage. Consider implementing caching in your application to reduce the number of API calls.
@@ -360,6 +414,37 @@ ACLED is an amazing service provided at no cost, so please be respectful and mea
 
 - [ACLED Website](https://acleddata.com/)
 - [ACLED API Documentation](https://acleddata.com/acleddatanew/wp-content/uploads/2020/10/ACLED_API-User-Guide_2020.pdf) (2020)
+
+## Development and Contributing
+
+### Setting Up the Development Environment
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/blazeiburgess/acled.git
+   cd acled
+   ```
+
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install in development mode with dev dependencies:
+   ```bash
+   pip install -e ".[dev]"
+   ```
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run tests with coverage report
+pytest --cov=acled --cov-report=term-missing
+```
 
 ## TODO
 
