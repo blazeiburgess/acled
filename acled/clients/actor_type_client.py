@@ -1,3 +1,10 @@
+"""Client module for accessing actor type data from the ACLED API.
+
+This module provides a client for retrieving information about different types
+of actors (e.g., state forces, rebel groups, protesters) from the ACLED database.
+It allows filtering by various criteria such as actor type ID, name, and event dates.
+"""
+
 from typing import Any, Dict, List, Optional, Union
 import requests
 from datetime import datetime, date
@@ -82,12 +89,11 @@ class ActorTypeClient(BaseHttpClient):
             if response.get('success'):
                 actor_type_list = response.get('data', [])
                 return [self._parse_actor_type(actor_type) for actor_type in actor_type_list]
-            else:
-                error_info = response.get('error', [{'message': 'Unknown error'}])[0]
-                error_message = error_info.get('message', 'Unknown error')
-                raise ApiError(f"API Error: {error_message}")
+            error_info = response.get('error', [{'message': 'Unknown error'}])[0]
+            error_message = error_info.get('message', 'Unknown error')
+            raise ApiError(f"API Error: {error_message}")
         except requests.HTTPError as e:
-            raise ApiError(f"HTTP Error: {str(e)}")
+            raise ApiError(f"HTTP Error: {str(e)}") from e
 
     def _parse_actor_type(self, actor_type_data: Dict[str, Any]) -> ActorType:
         """
@@ -104,14 +110,20 @@ class ActorTypeClient(BaseHttpClient):
         """
         try:
             actor_type_data['actor_type_id'] = int(actor_type_data.get('actor_type_id', 0))
-            actor_type_data['first_event_date'] = datetime.strptime(
-                actor_type_data['first_event_date'], '%Y-%m-%d'
-            ).date()
-            actor_type_data['last_event_date'] = datetime.strptime(
-                actor_type_data['last_event_date'], '%Y-%m-%d'
-            ).date()
+
+            # Parse first_event_date if it's a string
+            if isinstance(actor_type_data['first_event_date'], str):
+                actor_type_data['first_event_date'] = datetime.strptime(
+                    actor_type_data['first_event_date'], '%Y-%m-%d'
+                ).date()
+
+            # Parse last_event_date if it's a string
+            if isinstance(actor_type_data['last_event_date'], str):
+                actor_type_data['last_event_date'] = datetime.strptime(
+                    actor_type_data['last_event_date'], '%Y-%m-%d'
+                ).date()
             actor_type_data['event_count'] = int(actor_type_data.get('event_count', 0))
 
             return actor_type_data  # This will be of type ActorType
         except (ValueError, KeyError) as e:
-            raise ValueError(f"Error parsing actor type data: {str(e)}")
+            raise ValueError(f"Error parsing actor type data: {str(e)}") from e

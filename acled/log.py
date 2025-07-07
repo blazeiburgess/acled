@@ -1,10 +1,22 @@
+"""Logging module for the ACLED package.
+
+This module provides a centralized logging mechanism for the ACLED package,
+with configurable log levels and a consistent log format.
+"""
+
 import logging
 import os
 import sys
 from logging import Logger
 
 
-class AcledLogger(object):
+class AcledLogger:
+    """Singleton logger class for the ACLED package.
+
+    This class implements the singleton pattern to ensure that only one logger
+    instance is created and used throughout the application. The log level can
+    be configured via the 'LOG_LEVEL' environment variable.
+    """
     _instance = None
     logger: Logger
 
@@ -28,6 +40,11 @@ class AcledLogger(object):
         self.logger.addHandler(handler)
 
     def get_logger(self) -> Logger:
+        """Returns the configured logger instance.
+
+        Returns:
+            Logger: The configured logger instance for the ACLED package.
+        """
         return self.logger
 
 

@@ -1,3 +1,11 @@
+"""Exception classes for the ACLED package.
+
+This module defines custom exception classes used throughout the ACLED package
+to handle various error conditions, including API errors, authentication issues,
+network problems, and rate limiting.
+"""
+
+
 class ApiError(Exception):
     """
     Exception raised for errors returned by the API.

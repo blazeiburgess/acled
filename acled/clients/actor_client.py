@@ -1,3 +1,10 @@
+"""Client module for accessing actor data from the ACLED API.
+
+This module provides a client for retrieving information about actors involved
+in events recorded in the ACLED database. It allows filtering by actor name,
+event dates, and event counts to retrieve specific actors and their statistics.
+"""
+
 from typing import Any, Dict, List, Optional, Union
 from datetime import datetime, date
 
@@ -71,7 +78,7 @@ class ActorClient(BaseHttpClient):
             params.update(query_params)
 
         # Log the request
-        self.log.info(f"Fetching actor data with {len(params)} parameters")
+        self.log.info("Fetching actor data with %s parameters", len(params))
 
         # Perform the API request
         try:
@@ -79,20 +86,19 @@ class ActorClient(BaseHttpClient):
 
             if response.get('success'):
                 actor_list = response.get('data', [])
-                self.log.info(f"Retrieved {len(actor_list)} actors from ACLED API")
+                self.log.info("Retrieved %s actors from ACLED API", len(actor_list))
                 return [self._parse_actor(actor) for actor in actor_list]
-            else:
-                error_info = response.get('error', [{'message': 'Unknown error'}])[0]
-                error_message = error_info.get('message', 'Unknown error')
-                self.log.error(f"API Error: {error_message}")
-                raise ApiError(f"API Error: {error_message}")
+            error_info = response.get('error', [{'message': 'Unknown error'}])[0]
+            error_message = error_info.get('message', 'Unknown error')
+            self.log.error("API Error: %s", error_message)
+            raise ApiError(f"API Error: {error_message}")
 
         except (NetworkError, TimeoutError, RateLimitError, ServerError, ClientError, RetryError) as e:
             # These exceptions are already logged in BaseHttpClient
             raise
         except Exception as e:
-            self.log.error(f"Unexpected error in get_data: {str(e)}")
-            raise ApiError(f"Unexpected error: {str(e)}")
+            self.log.error("Unexpected error in get_data: %s", str(e))
+            raise ApiError(f"Unexpected error: {str(e)}") from e
 
     def _parse_actor(self, actor_data: Dict[str, Any]) -> Actor:
         """
@@ -118,4 +124,4 @@ class ActorClient(BaseHttpClient):
 
             return actor_data
         except (ValueError, KeyError) as e:
-            raise ValueError(f"Error parsing actor data: {str(e)}")
+            raise ValueError(f"Error parsing actor data: {str(e)}") from e
