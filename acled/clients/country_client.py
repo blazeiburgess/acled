@@ -107,12 +107,17 @@ class CountryClient(BaseHttpClient):
             ValueError: If there's an error during parsing.
         """
         try:
-            country_data['first_event_date'] = datetime.strptime(
-                country_data['first_event_date'], '%Y-%m-%d'
-            ).date()
-            country_data['last_event_date'] = datetime.strptime(
-                country_data['last_event_date'], '%Y-%m-%d'
-            ).date()
+            # Parse first_event_date if it's a string
+            if isinstance(country_data['first_event_date'], str):
+                country_data['first_event_date'] = datetime.strptime(
+                    country_data['first_event_date'], '%Y-%m-%d'
+                ).date()
+
+            # Parse last_event_date if it's a string
+            if isinstance(country_data['last_event_date'], str):
+                country_data['last_event_date'] = datetime.strptime(
+                    country_data['last_event_date'], '%Y-%m-%d'
+                ).date()
             country_data['iso'] = int(country_data.get('iso', 0))
             country_data['event_count'] = int(country_data.get('event_count', 0))
 
