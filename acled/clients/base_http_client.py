@@ -1,3 +1,11 @@
+"""Base HTTP client module for the ACLED API.
+
+This module provides a base HTTP client class that handles common functionality
+for all ACLED API clients, including authentication, request handling, retries,
+error handling, and parameter processing. It serves as the foundation for all
+specialized client classes that interact with specific ACLED API endpoints.
+"""
+
 from typing import Any, Dict, Optional, TypeVar
 from os import environ
 import time
