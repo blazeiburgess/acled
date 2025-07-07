@@ -78,7 +78,7 @@ class ActorClient(BaseHttpClient):
             params.update(query_params)
 
         # Log the request
-        self.log.info(f"Fetching actor data with {len(params)} parameters")
+        self.log.info("Fetching actor data with %s parameters", len(params))
 
         # Perform the API request
         try:
@@ -86,19 +86,19 @@ class ActorClient(BaseHttpClient):
 
             if response.get('success'):
                 actor_list = response.get('data', [])
-                self.log.info(f"Retrieved {len(actor_list)} actors from ACLED API")
+                self.log.info("Retrieved %s actors from ACLED API", len(actor_list))
                 return [self._parse_actor(actor) for actor in actor_list]
             else:
                 error_info = response.get('error', [{'message': 'Unknown error'}])[0]
                 error_message = error_info.get('message', 'Unknown error')
-                self.log.error(f"API Error: {error_message}")
+                self.log.error("API Error: %s", error_message)
                 raise ApiError(f"API Error: {error_message}")
 
         except (NetworkError, TimeoutError, RateLimitError, ServerError, ClientError, RetryError) as e:
             # These exceptions are already logged in BaseHttpClient
             raise
         except Exception as e:
-            self.log.error(f"Unexpected error in get_data: {str(e)}")
+            self.log.error("Unexpected error in get_data: %s", str(e))
             raise ApiError(f"Unexpected error: {str(e)}")
 
     def _parse_actor(self, actor_data: Dict[str, Any]) -> Actor:
