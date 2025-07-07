@@ -1,3 +1,11 @@
+"""Client module for accessing the main ACLED dataset.
+
+This module provides a client for retrieving event data from the ACLED database.
+It allows filtering by numerous criteria such as event type, date, location,
+actors involved, and many other attributes to retrieve specific conflict and
+disorder events from around the world.
+"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Union
