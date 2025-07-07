@@ -1,3 +1,10 @@
+"""Client module for accessing actor type data from the ACLED API.
+
+This module provides a client for retrieving information about different types
+of actors (e.g., state forces, rebel groups, protesters) from the ACLED database.
+It allows filtering by various criteria such as actor type ID, name, and event dates.
+"""
+
 from typing import Any, Dict, List, Optional, Union
 import requests
 from datetime import datetime, date
