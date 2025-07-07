@@ -88,11 +88,10 @@ class ActorClient(BaseHttpClient):
                 actor_list = response.get('data', [])
                 self.log.info("Retrieved %s actors from ACLED API", len(actor_list))
                 return [self._parse_actor(actor) for actor in actor_list]
-            else:
-                error_info = response.get('error', [{'message': 'Unknown error'}])[0]
-                error_message = error_info.get('message', 'Unknown error')
-                self.log.error("API Error: %s", error_message)
-                raise ApiError(f"API Error: {error_message}")
+            error_info = response.get('error', [{'message': 'Unknown error'}])[0]
+            error_message = error_info.get('message', 'Unknown error')
+            self.log.error("API Error: %s", error_message)
+            raise ApiError(f"API Error: {error_message}")
 
         except (NetworkError, TimeoutError, RateLimitError, ServerError, ClientError, RetryError) as e:
             # These exceptions are already logged in BaseHttpClient

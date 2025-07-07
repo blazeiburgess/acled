@@ -170,11 +170,10 @@ class AcledDataClient(BaseHttpClient):
                 event_list = response.get('data', [])
                 self.log.info("Retrieved %s events from ACLED API", len(event_list))
                 return [self._parse_event(event) for event in event_list]
-            else:
-                error_info = response.get('error', [{'message': 'Unknown error'}])[0]
-                error_message = error_info.get('message', 'Unknown error')
-                self.log.error("API Error: %s", error_message)
-                raise ApiError(f"API Error: {error_message}")
+            error_info = response.get('error', [{'message': 'Unknown error'}])[0]
+            error_message = error_info.get('message', 'Unknown error')
+            self.log.error("API Error: %s", error_message)
+            raise ApiError(f"API Error: {error_message}")
 
         except (NetworkError, TimeoutError, RateLimitError, ServerError, ClientError, RetryError) as e:
             # These exceptions are already logged in BaseHttpClient
