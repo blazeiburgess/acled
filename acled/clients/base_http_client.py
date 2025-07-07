@@ -115,11 +115,11 @@ class BaseHttpClient(object):
         processed_data = self.process_params(data) if method.lower() == 'post' else None
 
         # Log request details
-        self.log.info(f"Making {method.upper()} request to {endpoint}")
+        self.log.info("Making %s request to %s", method.upper(), endpoint)
         if processed_params:
-            self.log.debug(f"Query Parameters: {processed_params}")
+            self.log.debug("Query Parameters: %s", processed_params)
         if processed_data:
-            self.log.debug(f"Request Data: {processed_data}")
+            self.log.debug("Request Data: %s", processed_data)
 
         retries = 0
         last_exception = None
@@ -133,8 +133,8 @@ class BaseHttpClient(object):
                     sleep_time = backoff + jitter
 
                     self.log.warning(
-                        f"Retry attempt {retries}/{self.MAX_RETRIES} for {endpoint} "
-                        f"after {sleep_time:.2f}s"
+                        "Retry attempt %s/%s for %s after %.2fs",
+                        retries, self.MAX_RETRIES, endpoint, sleep_time
                     )
                     time.sleep(sleep_time)
 
@@ -144,12 +144,12 @@ class BaseHttpClient(object):
                     response = self.session.post(url, json=processed_data, timeout=timeout)
 
                 # Log response status
-                self.log.debug(f"Response status: {response.status_code}")
+                self.log.debug("Response status: %s", response.status_code)
 
                 # Check for rate limiting
                 if response.status_code == 429:
                     retry_after = int(response.headers.get('Retry-After', 60))
-                    self.log.warning(f"Rate limited. Retry after {retry_after}s")
+                    self.log.warning("Rate limited. Retry after %ss", retry_after)
                     time.sleep(retry_after)
                     retries += 1
                     continue
@@ -158,26 +158,26 @@ class BaseHttpClient(object):
                 response.raise_for_status()
 
                 # Log success
-                self.log.info(f"Request to {endpoint} successful")
-                self.log.debug(f"Response content length: {len(response.content)}")
+                self.log.info("Request to %s successful", endpoint)
+                self.log.debug("Response content length: %s", len(response.content))
 
                 return response.json()
 
             except Timeout as e:
-                self.log.error(f"Request timeout: {str(e)}")
+                self.log.error("Request timeout: %s", str(e))
                 last_exception = TimeoutError(f"Request timed out: {str(e)}")
             except ConnectionError as e:
-                self.log.error(f"Network error: {str(e)}")
+                self.log.error("Network error: %s", str(e))
                 last_exception = NetworkError(f"Network connection error: {str(e)}")
             except HTTPError as e:
                 status_code = getattr(getattr(e, "response", None), "status_code", None)
-                self.log.error(f"HTTP error: {str(e)} (status code: {status_code})")
+                self.log.error("HTTP error: %s (status code: %s)", str(e), status_code)
                 raise
             except RequestException as e:
-                self.log.error(f"Request error: {str(e)}")
+                self.log.error("Request error: %s", str(e))
                 last_exception = ApiError(f"Request error: {str(e)}")
             except Exception as e:
-                self.log.error(f"Unexpected error: {str(e)}")
+                self.log.error("Unexpected error: %s", str(e))
                 raise ApiError(f"Unexpected error: {str(e)}") from e
 
             retries += 1
