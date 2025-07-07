@@ -21,18 +21,18 @@ def create_parser() -> argparse.ArgumentParser:
 Examples:
   # Authenticate (first time setup)
   acled auth login
-  
+
   # Get recent events from Syria
   acled data --country Syria --year 2024 --limit 10
-  
+
   # Get data with table output
   acled data --country Nigeria --format table
-  
+
   # Get help for a specific command
   acled data --help
         '''
     )
-    
+
     # Global options
     parser.add_argument(
         '--version',
@@ -67,18 +67,18 @@ Examples:
         action='store_true',
         help='Suppress non-essential output'
     )
-    
+
     # Subcommands
     subparsers = parser.add_subparsers(
         dest='command',
         help='Available commands',
         metavar='COMMAND'
     )
-    
+
     # Register command parsers
     AuthCommand.register_parser(subparsers)
     DataCommand.register_parser(subparsers)
-    
+
     return parser
 
 
@@ -95,21 +95,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     """Main CLI entry point."""
     parser = create_parser()
     args = parser.parse_args(argv)
-    
+
     # Handle case where no command is provided
     if not args.command:
         parser.print_help()
         return 1
-    
+
     # Initialize configuration
     config = CLIConfig(args)
-    
+
     # Command mapping
     commands = {
         'auth': AuthCommand,
         'data': DataCommand,
     }
-    
+
     # Execute command
     try:
         command_class = commands[args.command]

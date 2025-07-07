@@ -11,28 +11,28 @@ from acled.cli.formatters import get_formatter
 
 class BaseCommand(ABC):
     """Base class for all CLI commands."""
-    
+
     def __init__(self, config: CLIConfig):
         self.config = config
         self.client = AcledClient(
             api_key=config.api_key,
             email=config.email
         )
-    
+
     @classmethod
     @abstractmethod
     def register_parser(cls, subparsers: argparse._SubParsersAction) -> None:
         """Register the command's argument parser."""
-    
+
     @abstractmethod
     def execute(self, args: argparse.Namespace) -> int:
         """Execute the command."""
-    
+
     def output_data(self, data: Any, format_type: str, output_file: Optional[str] = None) -> None:
         """Output data using the specified formatter."""
         formatter = get_formatter(format_type)
         formatted_data = formatter.format(data)
-        
+
         if output_file:
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(formatted_data)
@@ -40,7 +40,7 @@ class BaseCommand(ABC):
                 print(f"Output written to {output_file}")
         else:
             print(formatted_data)
-    
+
     def add_common_filters(self, parser: argparse.ArgumentParser) -> None:
         """Add common filtering options to a parser."""
         parser.add_argument(

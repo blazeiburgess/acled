@@ -9,12 +9,12 @@ from .base import BaseFormatter
 
 class CSVFormatter(BaseFormatter):
     """CSV output formatter."""
-    
+
     def format(self, data: Any) -> str:
         """Format data as CSV."""
         if not data:
             return ""
-        
+
         # Handle list of dicts
         if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
             output = io.StringIO()
@@ -22,7 +22,7 @@ class CSVFormatter(BaseFormatter):
             writer.writeheader()
             writer.writerows(data)
             return output.getvalue()
-        
+
         # Handle single dict
         if isinstance(data, dict):
             output = io.StringIO()
@@ -30,6 +30,6 @@ class CSVFormatter(BaseFormatter):
             writer.writeheader()
             writer.writerow(data)
             return output.getvalue()
-        
+
         # Fallback to string representation
         return str(data)
