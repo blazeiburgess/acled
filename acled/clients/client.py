@@ -1,3 +1,11 @@
+"""Main client module for the ACLED API.
+
+This module provides the primary client interface for the ACLED API wrapper.
+It aggregates all specialized clients into a single, unified interface,
+allowing users to access all ACLED API endpoints through a single client instance.
+This simplifies usage and provides a consistent entry point for all API interactions.
+"""
+
 from typing import Optional
 
 from acled.clients.acled_data_client import AcledDataClient
