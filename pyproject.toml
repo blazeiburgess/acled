@@ -1,6 +1,6 @@
 [project]
 name = "acled"
-version = "0.1.7"
+dynamic = ["version"]
 description = "A Python library that unofficially wraps the ACLED API."
 authors = [
     {name = "Blaze Burgess", email = "blaze.i.burgess@gmail.com"}
