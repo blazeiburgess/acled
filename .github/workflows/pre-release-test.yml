@@ -87,7 +87,7 @@ jobs:
               client = AcledClient()
               print('AcledClient instantiation: PASSED')
           except Exception as e:
-              if 'API_KEY' in str(e) or 'ACLED_EMAIL' in str(e):
+              if 'API key' in str(e) or 'ACLED_EMAIL' in str(e):
                   print('AcledClient instantiation with expected auth error: PASSED')
               else:
                   raise
