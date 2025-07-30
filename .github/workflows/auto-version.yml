@@ -1,0 +1,144 @@
+name: Auto Version Bump
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  version-bump:
+    if: |
+      github.event.pull_request.merged == true &&
+      (contains(github.event.pull_request.labels.*.name, 'bump:patch') ||
+       contains(github.event.pull_request.labels.*.name, 'bump:minor') ||
+       contains(github.event.pull_request.labels.*.name, 'bump:major'))
+    
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install bump2version
+        run: |
+          python -m pip install --upgrade pip
+          pip install bump2version setuptools_scm
+
+      - name: Get current version
+        id: current-version
+        run: |
+          # Get version from the latest tag
+          CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0")
+          echo "Current version: $CURRENT_VERSION"
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Determine version bump type
+        id: bump-type
+        run: |
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'bump:major') }}" == "true" ]]; then
+            BUMP_TYPE="major"
+          elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'bump:minor') }}" == "true" ]]; then
+            BUMP_TYPE="minor"
+          elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'bump:patch') }}" == "true" ]]; then
+            BUMP_TYPE="patch"
+          else
+            echo "No version bump label found"
+            exit 1
+          fi
+          echo "Bump type: $BUMP_TYPE"
+          echo "type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+
+      - name: Calculate new version
+        id: new-version
+        run: |
+          CURRENT="${{ steps.current-version.outputs.version }}"
+          BUMP_TYPE="${{ steps.bump-type.outputs.type }}"
+          
+          # Parse current version
+          IFS='.' read -r major minor patch <<< "$CURRENT"
+          
+          # Calculate new version
+          case "$BUMP_TYPE" in
+            major)
+              NEW_VERSION="$((major + 1)).0.0"
+              ;;
+            minor)
+              NEW_VERSION="${major}.$((minor + 1)).0"
+              ;;
+            patch)
+              NEW_VERSION="${major}.${minor}.$((patch + 1))"
+              ;;
+          esac
+          
+          echo "New version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update .bumpversion.cfg
+        run: |
+          # Update the current_version in .bumpversion.cfg to match latest tag
+          sed -i "s/current_version = .*/current_version = ${{ steps.current-version.outputs.version }}/" .bumpversion.cfg
+
+      - name: Bump version
+        run: |
+          bump2version ${{ steps.bump-type.outputs.type }} --new-version ${{ steps.new-version.outputs.version }}
+
+      - name: Push changes
+        run: |
+          git push origin main
+          git push origin "v${{ steps.new-version.outputs.version }}"
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const newVersion = '${{ steps.new-version.outputs.version }}';
+            const bumpType = '${{ steps.bump-type.outputs.type }}';
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: `## Version Bumped!\n\n` +
+                    `This PR triggered a **${bumpType}** version bump.\n\n` +
+                    `New version: **v${newVersion}**\n\n` +
+                    `The release workflow will now automatically:\n` +
+                    `1. Build and test the package\n` +
+                    `2. Publish to TestPyPI for validation\n` +
+                    `3. Publish to PyPI\n` +
+                    `4. Create a GitHub release with changelog\n\n` +
+                    `You can monitor the progress in the [Actions tab](${context.payload.repository.html_url}/actions).`
+            });
+
+  skip-version-bump:
+    if: |
+      github.event.pull_request.merged == true &&
+      !(contains(github.event.pull_request.labels.*.name, 'bump:patch') ||
+        contains(github.event.pull_request.labels.*.name, 'bump:minor') ||
+        contains(github.event.pull_request.labels.*.name, 'bump:major'))
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Note about version bump
+        run: |
+          echo "This PR was merged without a version bump label."
+          echo "To trigger a version bump, add one of these labels to the PR:"
+          echo "  - bump:patch (for bug fixes)"
+          echo "  - bump:minor (for new features)"
+          echo "  - bump:major (for breaking changes)"

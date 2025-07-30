@@ -2,7 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name="acled",
-    version="0.1.7",
+    use_scm_version=True,
+    setup_requires=["setuptools_scm"],
     description="A Python library that unofficially wraps the ACLED API.",
     author="Blaze Burgess",
     author_email="blaze.i.burgess@gmail.com",
