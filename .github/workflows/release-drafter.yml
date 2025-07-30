@@ -11,7 +11,9 @@ permissions:
   contents: read
 
 jobs:
+  # Job for updating draft releases (only on main branch)
   update_release_draft:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
       pull-requests: write
@@ -21,5 +23,21 @@ jobs:
         with:
           config-name: release-drafter.yml
           disable-autolabeler: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Job for auto-labeling PRs (only on pull requests)
+  autolabel:
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: release-drafter/release-drafter@v5
+        with:
+          config-name: release-drafter.yml
+          disable-autolabeler: false
+          disable-releaser: true  # Only run autolabeler, don't update releases
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
