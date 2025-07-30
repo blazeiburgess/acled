@@ -114,9 +114,9 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
-              body: `## 🎉 Version Bumped!\n\n` +
+              body: `## Version Bumped!\n\n` +
                     `This PR triggered a **${bumpType}** version bump.\n\n` +
-                    `📦 New version: **v${newVersion}**\n\n` +
+                    `New version: **v${newVersion}**\n\n` +
                     `The release workflow will now automatically:\n` +
                     `1. Build and test the package\n` +
                     `2. Publish to TestPyPI for validation\n` +
@@ -137,7 +137,7 @@ jobs:
     steps:
       - name: Note about version bump
         run: |
-          echo "ℹ️  This PR was merged without a version bump label."
+          echo "This PR was merged without a version bump label."
           echo "To trigger a version bump, add one of these labels to the PR:"
           echo "  - bump:patch (for bug fixes)"
           echo "  - bump:minor (for new features)"
