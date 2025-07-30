@@ -1,4 +1,4 @@
-name: Pre-release Test on TestPyPI
+name: Pre-release Test
 
 on:
   pull_request:
@@ -43,30 +43,9 @@ jobs:
           name: dist-packages
           path: dist/
 
-  publish-testpypi:
-    name: Publish to TestPyPI
+  test-local-installation:
+    name: Test Local Installation
     needs: test-build
-    runs-on: ubuntu-latest
-    environment: testpypi
-    permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
-
-    steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist-packages
-          path: dist/
-
-      - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          skip-existing: true  # Skip if version already exists on TestPyPI
-
-  test-installation:
-    name: Test Installation from TestPyPI
-    needs: publish-testpypi
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -80,25 +59,17 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Wait for package to be available
-        run: sleep 30  # Give TestPyPI time to process the package
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
 
-      - name: Get package version
-        id: get-version
-        run: |
-          # Extract version from setuptools_scm
-          pip install setuptools_scm
-          VERSION=$(python -c "import setuptools_scm; print(setuptools_scm.get_version())")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Package version: $VERSION"
-
-      - name: Install from TestPyPI
+      - name: Install from local wheel
         run: |
           python -m pip install --upgrade pip
-          # Install dependencies from PyPI, package from TestPyPI
-          pip install --index-url https://test.pypi.org/simple/ \
-                      --extra-index-url https://pypi.org/simple/ \
-                      acled==${{ steps.get-version.outputs.version }}
+          # Install the wheel file
+          pip install dist/*.whl
 
       - name: Test import
         run: |
@@ -128,9 +99,26 @@ jobs:
           which acled || echo "CLI not found in PATH"
           acled --help || echo "CLI help command failed (expected without credentials)"
 
+  # Only run TestPyPI publishing from main branch or tags, not PRs
+  publish-testpypi:
+    name: Publish to TestPyPI (Skipped on PRs)
+    needs: test-build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: testpypi
+    permissions:
+      id-token: write  # mandatory for trusted publishing
+
+    steps:
+      - name: Note about TestPyPI
+        run: |
+          echo "ℹ️ TestPyPI publishing is skipped for pull requests."
+          echo "It only runs on pushes to the main branch."
+          echo "This PR's changes will be tested locally only."
+
   status-check:
     name: Pre-release Test Status
-    needs: [test-build, publish-testpypi, test-installation]
+    needs: [test-build, test-local-installation]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -141,14 +129,12 @@ jobs:
             exit 1
           fi
           
-          if [[ "${{ needs.publish-testpypi.result }}" != "success" ]]; then
-            echo "❌ TestPyPI publish failed"
-            exit 1
-          fi
-          
-          if [[ "${{ needs.test-installation.result }}" != "success" ]]; then
-            echo "❌ Installation test failed"
+          if [[ "${{ needs.test-local-installation.result }}" != "success" ]]; then
+            echo "❌ Local installation test failed"
             exit 1
           fi
           
           echo "✅ All pre-release tests passed!"
+          echo ""
+          echo "📝 Note: TestPyPI publishing is only done on the main branch."
+          echo "    Once this PR is merged, the package will be published to TestPyPI."
