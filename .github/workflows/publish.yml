@@ -180,7 +180,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Wait for package availability
-        run: sleep 120  # Give PyPI time to process
+        run: sleep 240  # Give PyPI time to process
 
       - name: Install from PyPI
         run: |
