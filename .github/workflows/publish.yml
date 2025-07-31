@@ -133,7 +133,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Wait for package availability
-        run: sleep 60  # Give TestPyPI time to process
+        run: sleep 120  # Give TestPyPI time to process
 
       - name: Install from TestPyPI
         run: |
@@ -191,7 +191,7 @@ jobs:
         run: |
           python -c "
           import acled
-          print(f'✅ Successfully installed acled {acled.__version__}')
+          print(f'Successfully installed acled {acled.__version__}')
           assert acled.__version__ == '${{ needs.validate-version.outputs.version }}', f'Version mismatch: {acled.__version__} != ${{ needs.validate-version.outputs.version }}'
           "
 
