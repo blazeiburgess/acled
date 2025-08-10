@@ -42,8 +42,7 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         queries: security-extended,security-and-quality
-        # Override automatic language detection by uncommenting the below
-        # config-file: ./.github/codeql/codeql-config.yml
+        config-file: ./.github/codeql/codeql-config.yml
 
     - name: Set up Python
       uses: actions/setup-python@v5
