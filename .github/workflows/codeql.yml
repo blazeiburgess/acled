@@ -1,16 +1,5 @@
 name: CodeQL Analysis
 
-paths-ignore:
-  - tests
-  - '**/tests/**'
-  - '**/*_test.py'
-  - '**/*_tests.py'
-  - '**/test_*.py'
-  - '**/conftest.py'
-  - '**/pytest_*.py'
-  - '**/*.test.py'
-  - '**/*.spec.py'
-
 on:
   push:
     branches: [ main, develop ]
