@@ -6,7 +6,7 @@ error handling, and parameter processing. It serves as the foundation for all
 specialized client classes that interact with specific ACLED API endpoints.
 """
 
-from typing import Any, Dict, Optional, TypeVar
+from typing import Any, Dict, Optional, TypeVar, Union
 from os import environ
 import time
 import random
@@ -20,6 +20,7 @@ from acled.exceptions import (
     RetryError
 )
 from acled.log import AcledLogger
+from acled.auth import AuthMethod, AuthFactory, LegacyKeyEmailAuth
 
 
 T = TypeVar('T')
@@ -28,23 +29,42 @@ class BaseHttpClient(object):
     """
     A base HTTP client that provides basic GET and POST request functionality.
     """
-    BASE_URL = environ.get("ACLED_API_HOST", "https://api.acleddata.com")
+    BASE_URL = environ.get("ACLED_API_HOST", "https://acleddata.com/api")
     # Default retry settings
     MAX_RETRIES = int(environ.get("ACLED_MAX_RETRIES", "3"))
     RETRY_BACKOFF_FACTOR = float(environ.get("ACLED_RETRY_BACKOFF_FACTOR", "0.5"))
     RETRY_STATUS_CODES = [429, 500, 502, 503, 504]  # Rate limit and server errors
     DEFAULT_TIMEOUT = int(environ.get("ACLED_REQUEST_TIMEOUT", "30"))  # seconds
 
-    def __init__(self, api_key: Optional[str] = None, email: Optional[str] = None):
-        self.api_key = api_key if api_key else environ.get("ACLED_API_KEY")
-        if not self.api_key:
-            raise AcledMissingAuthError("API key is required")
-        self.email = email if email else environ.get("ACLED_EMAIL")
-        if not self.email:
-            raise AcledMissingAuthError("Email is required")
+    def __init__(self, auth_method: Optional[Union[str, AuthMethod]] = None, **auth_kwargs):
+        """Initialize the base HTTP client with authentication.
+        
+        Args:
+            auth_method: Authentication method (AuthMethod instance, method name, or None for auto)
+            **auth_kwargs: Authentication parameters (username, password, api_key, email, etc.)
+        """
+        self.log = AcledLogger().get_logger()
+        
+        # Simple auth handling - delegate all logic to AuthFactory
+        if isinstance(auth_method, AuthMethod):
+            self.auth = auth_method
+        elif auth_method:
+            self.auth = AuthFactory.create_auth(auth_method, **auth_kwargs)
+        elif auth_kwargs:
+            self.auth = AuthFactory.create_auth("auto", **auth_kwargs)
+        else:
+            self.auth = AuthFactory.from_environment()
+        
+        # Legacy attributes for backward compatibility
+        if isinstance(self.auth, LegacyKeyEmailAuth):
+            self.api_key = self.auth.api_key
+            self.email = self.auth.email
+        else:
+            self.api_key = None
+            self.email = None
+        
         self.session = requests.Session()
         self.session.headers.update({'Content-Type': 'application/json'})
-        self.log = AcledLogger().get_logger()
 
     def process_params(self, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -57,10 +77,6 @@ class BaseHttpClient(object):
             Processed parameters dictionary
         """
         processed_params = params.copy() if params else {}
-
-        # Include API key and email in all requests
-        processed_params['key'] = self.api_key
-        processed_params['email'] = self.email
 
         # Process parameters to handle different types
         for key, value in list(processed_params.items()):
@@ -76,6 +92,9 @@ class BaseHttpClient(object):
             elif hasattr(value, 'value'):
                 # Handle enum types
                 processed_params[key] = value.value
+
+        # Apply authentication to parameters
+        processed_params = self.auth.authenticate(self.session, processed_params)
 
         return processed_params
 
@@ -111,6 +130,10 @@ class BaseHttpClient(object):
         """
         url = f"{self.BASE_URL}{endpoint}"
         timeout = timeout or self.DEFAULT_TIMEOUT
+        
+        # Refresh authentication if needed
+        self.auth.refresh_if_needed(self.session)
+        
         processed_params = self.process_params(params) if method.lower() == 'get' else None
         processed_data = self.process_params(data) if method.lower() == 'post' else None
 
