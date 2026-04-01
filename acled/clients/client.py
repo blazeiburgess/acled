@@ -17,6 +17,7 @@ from acled.clients.region_client import RegionClient
 from acled.models import AcledEvent, Actor, ActorType, Country, Region
 from acled.models.enums import ExportType
 from acled.auth import AuthMethod, AuthFactory
+from acled.clients.base_http_client import _validate_auth_method_arg
 
 
 class AcledClient:
@@ -75,6 +76,8 @@ class AcledClient:
             auth = OAuthTokenAuth(username="user", password="pass")
             client = AcledClient(auth_method=auth)
         """
+        _validate_auth_method_arg(auth_method)
+
         # Resolve auth ONCE and share across all sub-clients
         if isinstance(auth_method, AuthMethod):
             auth = auth_method
