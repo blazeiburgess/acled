@@ -48,6 +48,18 @@ class AuthMethod(ABC):
         pass
 
     @abstractmethod
+    def force_refresh(self, session: requests.Session) -> None:
+        """Force a credential refresh (e.g., after a 401/403 response).
+
+        Unlike refresh_if_needed which checks expiry times, this method
+        unconditionally refreshes credentials.
+
+        Args:
+            session: The requests session to update with new credentials
+        """
+        pass
+
+    @abstractmethod
     def is_authenticated(self) -> bool:
         """Check if the authentication is currently valid.
 
@@ -101,6 +113,10 @@ class LegacyKeyEmailAuth(AuthMethod):
 
     def refresh_if_needed(self, session: requests.Session) -> None:
         """No refresh needed for legacy authentication."""
+        pass
+
+    def force_refresh(self, session: requests.Session) -> None:
+        """No refresh possible for legacy authentication (static credentials)."""
         pass
 
     def is_authenticated(self) -> bool:
@@ -317,6 +333,31 @@ class OAuthTokenAuth(AuthMethod):
         if self.access_token:
             session.headers["Authorization"] = f"Bearer {self.access_token}"
 
+    def force_refresh(self, session: requests.Session) -> None:
+        """Force token refresh after a 401/403 response.
+
+        Tries refresh token first, falls back to password grant.
+
+        Args:
+            session: The requests session to update with new token
+        """
+        self.log.info("Forcing OAuth token refresh")
+        if self.refresh_token:
+            try:
+                self._refresh_access_token()
+            except Exception:
+                if self.username and self.password:
+                    self._obtain_token()
+                else:
+                    raise
+        elif self.username and self.password:
+            self._obtain_token()
+        else:
+            raise ApiError("Cannot refresh OAuth token: no refresh token or credentials")
+
+        if self.access_token:
+            session.headers["Authorization"] = f"Bearer {self.access_token}"
+
     def is_authenticated(self) -> bool:
         """Check if we have a valid access token.
 
@@ -509,6 +550,20 @@ class CookieAuth(AuthMethod):
         if self.cookies:
             session.cookies.update(self.cookies)
 
+        if self.csrf_token:
+            session.headers["X-CSRF-Token"] = self.csrf_token
+
+    def force_refresh(self, session: requests.Session) -> None:
+        """Force re-login after a 401/403 response.
+
+        Args:
+            session: The requests session to update with new cookies
+        """
+        self.log.info("Forcing cookie re-login")
+        self._login()
+
+        if self.cookies:
+            session.cookies.update(self.cookies)
         if self.csrf_token:
             session.headers["X-CSRF-Token"] = self.csrf_token
 
