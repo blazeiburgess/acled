@@ -168,5 +168,43 @@ def test_logger_initialization(mock_environ, mock_requests_session, mock_logger)
     client._get('/test')
     assert mock_logger.debug.call_count == 3  # Called for URL, params, and response content
 
+def test_401_triggers_token_refresh_and_retry(mock_environ, mock_requests_session, mock_logger):
+    client = BaseHttpClient()
+
+    # First response: 401, second response: 200
+    mock_response_401 = MagicMock()
+    mock_response_401.status_code = 401
+    mock_response_401.raise_for_status.side_effect = requests.HTTPError("401 Unauthorized")
+
+    mock_response_200 = MagicMock()
+    mock_response_200.status_code = 200
+    mock_response_200.json.return_value = {'data': 'test'}
+    mock_response_200.content = b'{"data": "test"}'
+
+    mock_requests_session.get.side_effect = [mock_response_401, mock_response_200]
+
+    with patch.object(client.auth, 'force_refresh') as mock_force_refresh:
+        result = client._get('/test', {'param': 'value'})
+
+    mock_force_refresh.assert_called_once_with(client.session)
+    assert result == {'data': 'test'}
+    assert mock_requests_session.get.call_count == 2
+
+
+def test_401_twice_raises_after_refresh(mock_environ, mock_requests_session, mock_logger):
+    client = BaseHttpClient()
+
+    # Both responses return 401
+    mock_response_401 = MagicMock()
+    mock_response_401.status_code = 401
+    mock_response_401.raise_for_status.side_effect = requests.HTTPError("401 Unauthorized")
+
+    mock_requests_session.get.return_value = mock_response_401
+
+    with patch.object(client.auth, 'force_refresh'):
+        with pytest.raises(requests.HTTPError):
+            client._get('/test')
+
+
 if __name__ == "__main__":
     pytest.main()
