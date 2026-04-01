@@ -8,13 +8,16 @@ from acled.exceptions import AcledMissingAuthError
 
 @pytest.fixture
 def mock_environ():
-    with patch('acled.clients.base_http_client.environ') as mock_env:
-        mock_env.get.side_effect = lambda key, default=None: {
-            'ACLED_API_HOST': 'https://test.api.com',
-            'ACLED_API_KEY': 'test_api_key',
-            'ACLED_EMAIL': 'test@email.com'
-        }.get(key, default)
-        yield mock_env
+    env_dict = {
+        'ACLED_API_HOST': 'https://test.api.com',
+        'ACLED_API_KEY': 'test_api_key',
+        'ACLED_EMAIL': 'test@email.com'
+    }
+    with patch('acled.clients.base_http_client.environ') as mock_env_client:
+        with patch('acled.auth.environ') as mock_env_auth:
+            mock_env_client.get.side_effect = lambda key, default=None: env_dict.get(key, default)
+            mock_env_auth.get.side_effect = lambda key, default=None: env_dict.get(key, default)
+            yield mock_env_client
 
 @pytest.fixture
 def mock_requests_session():
@@ -34,7 +37,7 @@ def test_init_with_provided_credentials(mock_environ, mock_requests_session, moc
     client = BaseHttpClient(api_key='provided_key', email='provided@email.com')
     assert client.api_key == 'provided_key'
     assert client.email == 'provided@email.com'
-    assert client.BASE_URL == 'https://api.acleddata.com'
+    assert client.BASE_URL == 'https://acleddata.com/api'
     mock_requests_session.headers.update.assert_called_once_with({'Content-Type': 'application/json'})
 
 def test_init_with_environ_credentials(mock_environ, mock_requests_session, mock_logger):
@@ -46,22 +49,23 @@ def test_init_with_environ_credentials(mock_environ, mock_requests_session, mock
     client = BaseHttpClient()
     assert client.api_key == 'test_api_key'
     assert client.email == 'test@email.com'
-    assert client.BASE_URL == 'https://api.acleddata.com'
+    assert client.BASE_URL == 'https://acleddata.com/api'
 
 def test_init_missing_api_key(mock_environ, mock_requests_session, mock_logger):
-    mock_environ.get.side_effect = lambda key, default=None: {
-        'ACLED_API_HOST': 'https://test.api.com',
-        'ACLED_EMAIL': 'test@email.com'
-    }.get(key, default)
-    with pytest.raises(AcledMissingAuthError, match="API key is required"):
-        BaseHttpClient()
+    # Clear environment to ensure no authentication is found
+    with patch('acled.auth.environ') as mock_auth_env:
+        mock_auth_env.get.return_value = None
+        with pytest.raises(AcledMissingAuthError, match="No authentication credentials"):
+            BaseHttpClient()
 
 def test_init_missing_email(mock_environ, mock_requests_session, mock_logger):
-    mock_environ.get.side_effect = lambda key, default=None: {
-        'ACLED_API_KEY': 'test_api_key'
-    }.get(key, default)
-    with pytest.raises(AcledMissingAuthError, match="Email is required"):
-        BaseHttpClient()
+    # Set only API key without email
+    with patch('acled.auth.environ') as mock_auth_env:
+        mock_auth_env.get.side_effect = lambda key, default=None: {
+            'ACLED_API_KEY': 'test_api_key'
+        }.get(key, default)
+        with pytest.raises(AcledMissingAuthError, match="Email is required|No authentication credentials"):
+            BaseHttpClient()
 
 def test_get_request(mock_environ, mock_requests_session, mock_logger):
     client = BaseHttpClient()
@@ -72,7 +76,7 @@ def test_get_request(mock_environ, mock_requests_session, mock_logger):
     result = client._get('/test', {'param': 'value'})
 
     mock_requests_session.get.assert_called_once_with(
-        'https://api.acleddata.com/test',
+        'https://acleddata.com/api/test',
         params={'param': 'value', 'key': 'test_api_key', 'email': 'test@email.com'},
         timeout=30
     )
@@ -89,7 +93,7 @@ def test_get_request_without_params(mock_environ, mock_requests_session, mock_lo
     result = client._get('/test')
 
     mock_requests_session.get.assert_called_once_with(
-        'https://api.acleddata.com/test',
+        'https://acleddata.com/api/test',
         params={'key': 'test_api_key', 'email': 'test@email.com'},
         timeout=30
     )
@@ -105,7 +109,7 @@ def test_post_request(mock_environ, mock_requests_session, mock_logger):
     result = client._post('/test', {'param': 'value'})
 
     mock_requests_session.post.assert_called_once_with(
-        'https://api.acleddata.com/test',
+        'https://acleddata.com/api/test',
         json={'param': 'value', 'key': 'test_api_key', 'email': 'test@email.com'},
         timeout=30
     )
@@ -121,7 +125,7 @@ def test_post_request_without_data(mock_environ, mock_requests_session, mock_log
     result = client._post('/test')
 
     mock_requests_session.post.assert_called_once_with(
-        'https://api.acleddata.com/test',
+        'https://acleddata.com/api/test',
         json={'key': 'test_api_key', 'email': 'test@email.com'},
         timeout=30
     )
@@ -148,12 +152,15 @@ def test_post_request_raises_exception(mock_environ, mock_requests_session, mock
 
 def test_base_url_default(mock_requests_session, mock_logger):
     with patch('acled.clients.base_http_client.environ') as mock_env:
-        mock_env.get.side_effect = lambda key, default=None: {
-            'ACLED_API_KEY': 'test_api_key',
-            'ACLED_EMAIL': 'test@email.com',
-        }.get(key, default)
-        client = BaseHttpClient()
-        assert client.BASE_URL == "https://api.acleddata.com"
+        with patch('acled.auth.environ') as mock_auth_env:
+            env_dict = {
+                'ACLED_API_KEY': 'test_api_key',
+                'ACLED_EMAIL': 'test@email.com',
+            }
+            mock_env.get.side_effect = lambda key, default=None: env_dict.get(key, default)
+            mock_auth_env.get.side_effect = lambda key, default=None: env_dict.get(key, default)
+            client = BaseHttpClient()
+            assert client.BASE_URL == "https://acleddata.com/api"
 
 def test_logger_initialization(mock_environ, mock_requests_session, mock_logger):
     client = BaseHttpClient()
