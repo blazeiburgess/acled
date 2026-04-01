@@ -67,11 +67,11 @@ class CLIConfig:
                 creds = credential_manager.get_credentials()
                 if creds.get('auth_method') == 'legacy':
                     return creds.get('email')
-        except (AuthenticationError, Exception):
+        except AuthenticationError:
             pass
 
         return None
-    
+
     def _get_auth_method(self) -> Optional[AuthMethod]:
         """Get authentication method from stored credentials or environment."""
         # If CLI args have api_key/email, use legacy auth
@@ -82,7 +82,11 @@ class CLIConfig:
         if os.environ.get('ACLED_API_KEY') and os.environ.get('ACLED_EMAIL'):
             return None  # Will use legacy auth from env
         elif os.environ.get('ACLED_USERNAME') and os.environ.get('ACLED_PASSWORD'):
-            return AuthFactory.create_auth('oauth')
+            return AuthFactory.create_auth(
+                'auto',
+                username=os.environ.get('ACLED_USERNAME'),
+                password=os.environ.get('ACLED_PASSWORD')
+            )
         
         # Try to get from stored credentials
         try:
@@ -97,10 +101,16 @@ class CLIConfig:
                         username=creds.get('username'),
                         password=creds.get('password')
                     )
+                elif auth_method == 'cookie':
+                    return AuthFactory.create_auth(
+                        'cookie',
+                        username=creds.get('username'),
+                        password=creds.get('password')
+                    )
                 else:
                     # For legacy, we'll use api_key/email properties
                     return None
-        except (AuthenticationError, Exception):
+        except AuthenticationError:
             pass
         
         return None
