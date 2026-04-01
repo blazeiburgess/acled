@@ -386,5 +386,88 @@ class TestAuthCommand(unittest.TestCase):
         self.assertFalse(result)
 
 
+    @patch('acled.cli.commands.auth.AcledClient')
+    @patch('acled.cli.commands.auth.OAuthTokenAuth')
+    def test_validate_modern_returns_cookie_when_oauth_fails(self, mock_oauth_class, mock_client_class):
+        """Test that _validate_modern_credentials returns 'cookie' when OAuth fails."""
+        from acled.cli.commands.auth import AuthCommand
+
+        # OAuth constructor raises
+        mock_oauth_class.side_effect = Exception("OAuth failed")
+
+        # Cookie succeeds
+        mock_client = Mock()
+        mock_client.get_data.return_value = [{"test": "data"}]
+        mock_client_class.return_value = mock_client
+
+        with patch('acled.cli.commands.auth.CredentialManager'):
+            command = AuthCommand(self.mock_config)
+
+        with patch('acled.auth.CookieAuth') as mock_cookie_class:
+            mock_cookie_auth = Mock()
+            mock_cookie_class.return_value = mock_cookie_auth
+            result = command._validate_modern_credentials('user', 'pass')
+
+        self.assertEqual(result, 'cookie')
+
+    @patch('acled.cli.commands.auth.AcledClient')
+    @patch('acled.cli.commands.auth.OAuthTokenAuth')
+    def test_validate_modern_returns_oauth_when_oauth_succeeds(self, mock_oauth_class, mock_client_class):
+        """Test that _validate_modern_credentials returns 'oauth' when OAuth succeeds."""
+        from acled.cli.commands.auth import AuthCommand
+
+        mock_oauth_auth = Mock()
+        mock_oauth_class.return_value = mock_oauth_auth
+
+        mock_client = Mock()
+        mock_client.get_data.return_value = [{"test": "data"}]
+        mock_client_class.return_value = mock_client
+
+        with patch('acled.cli.commands.auth.CredentialManager'):
+            command = AuthCommand(self.mock_config)
+
+        result = command._validate_modern_credentials('user', 'pass')
+
+        self.assertEqual(result, 'oauth')
+
+    @patch('acled.cli.commands.auth.AcledClient')
+    @patch('acled.cli.commands.auth.OAuthTokenAuth')
+    def test_login_stores_cookie_when_oauth_fails(self, mock_oauth_class, mock_client_class):
+        """Test that login stores auth_method='cookie' when only cookie succeeds."""
+        from acled.cli.commands.auth import AuthCommand
+
+        mock_oauth_class.side_effect = Exception("OAuth failed")
+
+        mock_client = Mock()
+        mock_client.get_data.return_value = [{"test": "data"}]
+        mock_client_class.return_value = mock_client
+
+        mock_manager = Mock()
+        mock_manager.has_stored_credentials.return_value = False
+
+        with patch('acled.cli.commands.auth.CredentialManager', return_value=mock_manager):
+            command = AuthCommand(self.mock_config)
+
+        args = Mock()
+        args.method = 'auto'
+        args.username = 'user'
+        args.password = 'pass'
+        args.email = None
+        args.api_key = None
+        args.force = False
+
+        with patch('acled.auth.CookieAuth') as mock_cookie_class:
+            mock_cookie_class.return_value = Mock()
+            with patch('builtins.print'):
+                result = command._handle_login(args)
+
+        self.assertEqual(result, 0)
+        mock_manager.store_credentials.assert_called_once_with(
+            username='user',
+            password='pass',
+            auth_method='cookie'
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -155,6 +155,7 @@ class TestCLIConfig(unittest.TestCase):
     def test_cookie_auth_from_stored_credentials(self, mock_credential_manager_class, mock_factory):
         """Test that stored cookie credentials create CookieAuth."""
         from acled.cli.utils.config import CLIConfig
+        from acled.exceptions import AcledMissingAuthError
 
         mock_manager = Mock()
         mock_manager.has_stored_credentials.return_value = True
@@ -166,43 +167,80 @@ class TestCLIConfig(unittest.TestCase):
         mock_credential_manager_class.return_value = mock_manager
         mock_auth = Mock()
         mock_factory.create_auth.return_value = mock_auth
+        # from_environment raises so we fall through to stored creds
+        mock_factory.from_environment.side_effect = AcledMissingAuthError("no env")
 
         config = CLIConfig(self.mock_args)
 
+        # Access auth_method to trigger lazy load
+        result = config.auth_method
         mock_factory.create_auth.assert_called_with(
             'cookie', username='user@example.com', password='secret'
         )
-        self.assertIs(config.auth_method, mock_auth)
+        self.assertIs(result, mock_auth)
 
     @patch('acled.cli.utils.config.AuthFactory')
     @patch.dict(os.environ, {
         'ACLED_USERNAME': 'user', 'ACLED_PASSWORD': 'pass'
     }, clear=False)
     def test_modern_auth_from_env_vars(self, mock_factory):
-        """Test that ACLED_USERNAME/ACLED_PASSWORD env vars use auto auth."""
+        """Test that env vars use AuthFactory.from_environment() for consistent precedence."""
         from acled.cli.utils.config import CLIConfig
 
         mock_auth = Mock()
-        mock_factory.create_auth.return_value = mock_auth
+        mock_factory.from_environment.return_value = mock_auth
 
         config = CLIConfig(self.mock_args)
+        # Access auth_method to trigger lazy load
+        result = config.auth_method
 
-        mock_factory.create_auth.assert_called_with(
-            'auto', username='user', password='pass'
-        )
-        self.assertIs(config.auth_method, mock_auth)
+        mock_factory.from_environment.assert_called_once()
+        self.assertIs(result, mock_auth)
 
+    @patch('acled.cli.utils.config.AuthFactory')
     @patch('acled.cli.utils.config.CredentialManager')
-    def test_unexpected_exception_propagates(self, mock_credential_manager_class):
+    def test_unexpected_exception_propagates(self, mock_credential_manager_class, mock_factory):
         """Test that non-AuthenticationError exceptions propagate."""
         from acled.cli.utils.config import CLIConfig
+        from acled.exceptions import AcledMissingAuthError
 
         mock_manager = Mock()
         mock_manager.has_stored_credentials.side_effect = RuntimeError("disk error")
         mock_credential_manager_class.return_value = mock_manager
+        mock_factory.from_environment.side_effect = AcledMissingAuthError("no env")
 
         with self.assertRaises(RuntimeError):
-            CLIConfig(self.mock_args)
+            # Access auth_method to trigger the lazy load
+            CLIConfig(self.mock_args).auth_method
+
+    @patch('acled.cli.utils.config.AuthFactory')
+    def test_auth_method_is_lazy(self, mock_factory):
+        """Test that CLIConfig construction does not eagerly construct auth."""
+        from acled.cli.utils.config import CLIConfig
+
+        config = CLIConfig(self.mock_args)
+
+        # AuthFactory should NOT have been called during __init__
+        mock_factory.from_environment.assert_not_called()
+        mock_factory.create_auth.assert_not_called()
+
+    @patch('acled.cli.utils.config.AuthFactory')
+    @patch.dict(os.environ, {
+        'ACLED_API_KEY': 'key', 'ACLED_EMAIL': 'e@mail.com',
+        'ACLED_USERNAME': 'user', 'ACLED_PASSWORD': 'pass'
+    }, clear=False)
+    def test_auth_precedence_matches_library(self, mock_factory):
+        """Test that CLI uses same auth precedence as library (via from_environment)."""
+        from acled.cli.utils.config import CLIConfig
+
+        mock_auth = Mock()
+        mock_factory.from_environment.return_value = mock_auth
+
+        config = CLIConfig(self.mock_args)
+
+        # Should delegate to from_environment which handles precedence
+        self.assertIs(config.auth_method, mock_auth)
+        mock_factory.from_environment.assert_called_once()
 
 
 if __name__ == '__main__':
