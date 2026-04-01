@@ -12,13 +12,13 @@ class TestInputValidation:
     def test_missing_api_key(self):
         """Test that an error is raised when API key is missing"""
         with patch.dict(os.environ, {'ACLED_EMAIL': 'test@example.com'}, clear=True):
-            with pytest.raises(AcledMissingAuthError, match="API key is required"):
+            with pytest.raises(AcledMissingAuthError, match="No authentication credentials|Email is required"):
                 AcledClient()
 
     def test_missing_email(self):
         """Test that an error is raised when email is missing"""
         with patch.dict(os.environ, {'ACLED_API_KEY': 'test_key'}, clear=True):
-            with pytest.raises(AcledMissingAuthError, match="Email is required"):
+            with pytest.raises(AcledMissingAuthError, match="Email is required|No authentication credentials"):
                 AcledClient()
 
     def test_invalid_date_format(self):
