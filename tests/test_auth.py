@@ -132,8 +132,9 @@ class TestOAuthTokenAuth:
         auth.refresh_token = "refresh_token"
         auth.access_token_expires_at = datetime.now() - timedelta(hours=1)
         auth.refresh_token_expires_at = datetime.now() + timedelta(days=7)
+        auth.token_file = None
         auth.log = MagicMock()
-        
+
         # Mock refresh response
         mock_response = Mock()
         mock_response.status_code = 200
@@ -143,12 +144,12 @@ class TestOAuthTokenAuth:
             "expires_in": 86400
         }
         mock_post.return_value = mock_response
-        
+
         auth._refresh_access_token()
-        
+
         assert auth.access_token == "new_access_token"
         assert auth.refresh_token == "new_refresh_token"
-        
+
         # Verify refresh endpoint was called
         call_args = mock_post.call_args
         assert call_args[1]["data"]["grant_type"] == "refresh_token"
@@ -179,8 +180,9 @@ class TestOAuthTokenAuth:
         auth.refresh_token = "refresh_token"
         auth.access_token_expires_at = datetime.now() - timedelta(hours=1)
         auth.refresh_token_expires_at = datetime.now() + timedelta(days=7)
+        auth.token_file = None
         auth.log = MagicMock()
-        
+
         # Mock refresh response
         mock_response = Mock()
         mock_response.status_code = 200
@@ -189,14 +191,66 @@ class TestOAuthTokenAuth:
             "expires_in": 86400
         }
         mock_post.return_value = mock_response
-        
+
         session = Mock()
         session.headers = {}
-        
+
         auth.refresh_if_needed(session)
-        
+
         assert auth.access_token == "new_token"
         assert session.headers["Authorization"] == "Bearer new_token"
+
+
+class TestOAuthTokenPersistence:
+    """Test that tokens are persisted to disk after refresh."""
+
+    @patch('acled.auth.requests.post')
+    def test_persist_tokens_after_refresh(self, mock_post):
+        """Test tokens are saved to file after refresh."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "access_token": "initial_access",
+            "refresh_token": "initial_refresh",
+            "expires_in": 86400,
+            "refresh_token_expires_in": 1209600
+        }
+        mock_post.return_value = mock_response
+
+        with patch.object(OAuthTokenAuth, 'save_tokens') as mock_save:
+            auth = OAuthTokenAuth(
+                username='user', password='pass', token_file='/tmp/tokens.json'
+            )
+            # save_tokens should have been called during init via _persist_tokens
+            mock_save.assert_called_with('/tmp/tokens.json')
+            mock_save.reset_mock()
+
+            # Simulate token refresh
+            mock_response.json.return_value = {
+                "access_token": "refreshed_access",
+                "refresh_token": "refreshed_refresh",
+                "expires_in": 86400,
+            }
+            auth._refresh_access_token()
+
+            # save_tokens should be called again after refresh
+            mock_save.assert_called_with('/tmp/tokens.json')
+
+    @patch('acled.auth.requests.post')
+    def test_no_persist_without_token_file(self, mock_post):
+        """Test tokens are not saved when no token_file is set."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "access_token": "test_token",
+            "refresh_token": "refresh_token",
+            "expires_in": 86400,
+        }
+        mock_post.return_value = mock_response
+
+        with patch.object(OAuthTokenAuth, 'save_tokens') as mock_save:
+            auth = OAuthTokenAuth(username='user', password='pass')
+            mock_save.assert_not_called()
 
 
 class TestAuthFactory:
