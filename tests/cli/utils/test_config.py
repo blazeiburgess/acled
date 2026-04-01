@@ -84,7 +84,7 @@ class TestCLIConfig(unittest.TestCase):
         # Mock credential manager
         mock_manager = Mock()
         mock_manager.has_stored_credentials.return_value = True
-        mock_manager.get_credentials.return_value = ('stored_key', 'stored@example.com')
+        mock_manager.get_credentials.return_value = {'api_key': 'stored_key', 'email': 'stored@example.com', 'auth_method': 'legacy'}
         mock_credential_manager_class.return_value = mock_manager
         
         config = CLIConfig(self.mock_args)
@@ -100,7 +100,7 @@ class TestCLIConfig(unittest.TestCase):
         # Mock credential manager
         mock_manager = Mock()
         mock_manager.has_stored_credentials.return_value = True
-        mock_manager.get_credentials.return_value = ('stored_key', 'stored@example.com')
+        mock_manager.get_credentials.return_value = {'api_key': 'stored_key', 'email': 'stored@example.com', 'auth_method': 'legacy'}
         mock_credential_manager_class.return_value = mock_manager
         
         # Set args (highest priority)
