@@ -19,8 +19,13 @@ class CountryClient(BaseHttpClient):
     Client for interacting with the ACLED country endpoint.
     """
 
-    def __init__(self, api_key: str, email: str):
-        super().__init__(api_key, email)
+    def __init__(self, **kwargs):
+        """Initialize the country client.
+        
+        Args:
+            **kwargs: Authentication parameters passed to BaseHttpClient
+        """
+        super().__init__(**kwargs)
         self.endpoint = "/country/read"
 
     def get_data(
