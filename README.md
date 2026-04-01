@@ -14,71 +14,59 @@ pip install acled
 
 ## Python Library Authentication
 
-All requests to the ACLED API require authentication with a valid API key and the email that is registered to that API key. You can obtain these by registering on the [ACLED website](https://acleddata.com/register/).
+ACLED requires authentication for all API requests. Register on the [ACLED website](https://acleddata.com/register/) to get credentials.
 
-You can provide authentication credentials in two ways:
+The library supports multiple authentication methods:
 
-### 1. Environment Variables
+### Modern Authentication (Recommended)
 
-Set the following environment variables:
+Use your ACLED username/email and password:
 
-- `ACLED_API_KEY` - Your ACLED API key
-- `ACLED_EMAIL` - The email associated with your API key
+```python
+# Auto-detect best method (OAuth or Cookie)
+client = AcledClient(username="your_email", password="your_password")
 
-### 2. Direct Parameters
+# Or use environment variables
+export ACLED_USERNAME="your_email"  # or ACLED_EMAIL
+export ACLED_PASSWORD="your_password"
+client = AcledClient()  # Auto-detects from environment
+```
 
-Pass the credentials directly when initializing the client:
+### Legacy Authentication (API Key)
+
+Still supported for backward compatibility:
 
 ```python
 client = AcledClient(api_key="your_api_key", email="your_email")
+
+# Or use environment variables
+export ACLED_API_KEY="your_api_key"
+export ACLED_EMAIL="your_email"
 ```
 
 ## Basic Usage
-
-### Example with Environment Variables
-
-```python
-from acled import AcledClient
-from acled.models import AcledEvent
-from typing import List, Dict
-
-# Initialize the client (uses environment variables)
-client = AcledClient()
-
-# Fetch data with optional filters
-filters: Dict[str, int | str] = {
-    'limit': 10,
-    'event_date': '2023-01-01|2023-01-31'
-}
-
-events: List[AcledEvent] = client.get_data(params=filters)
-
-# Iterate over events
-for event in events:
-    print(event['event_id_cnty'], event['event_date'], event['notes'])
-```
-
-### Example with Direct Credentials
 
 ```python
 from acled import AcledClient
 from acled.models import AcledEvent
 from typing import List
 
-# Initialize the client with credentials
-client = AcledClient(api_key="your_api_key", email="your_email")
+# Initialize with modern auth (recommended)
+client = AcledClient(username="your_email", password="your_password")
 
-# Fetch data with optional filters
-filters = {
-    'limit': 10,
-    'event_date': '2023-01-01|2023-01-31'
-}
+# Or auto-detect from environment
+client = AcledClient()  # Uses ACLED_USERNAME/ACLED_PASSWORD or ACLED_API_KEY/ACLED_EMAIL
 
-events: List[AcledEvent] = client.get_data(params=filters)
+# Fetch data with filters
+events: List[AcledEvent] = client.get_data(
+    country='Yemen',
+    year=2024,
+    limit=10
+)
 
-# Iterate over events
+# Process events
 for event in events:
-    print(event['event_id_cnty'], event['event_date'], event['notes'])
+    print(f"{event['event_date']}: {event['event_type']} - {event['notes'][:100]}...")
 ```
 
 ## Advanced Usage
@@ -346,8 +334,13 @@ region = Region.WESTERN_AFRICA  # 1
 
 The library's behavior can be configured through environment variables:
 
-- `ACLED_API_KEY`: Your ACLED API key
-- `ACLED_EMAIL`: The email associated with your API key
+**Authentication:**
+- `ACLED_USERNAME` or `ACLED_EMAIL`: Username/email for modern auth
+- `ACLED_PASSWORD`: Password for modern auth
+- `ACLED_API_KEY`: API key for legacy auth
+- `ACLED_EMAIL`: Email for legacy auth (if not using modern auth)
+
+**Connection Settings:**
 - `ACLED_MAX_RETRIES`: Maximum number of retry attempts (default: 3)
 - `ACLED_RETRY_BACKOFF_FACTOR`: Backoff factor for calculating wait time between retries (default: 0.5)
 - `ACLED_REQUEST_TIMEOUT`: Request timeout in seconds (default: 30)
@@ -361,10 +354,16 @@ The library includes a command-line interface for easy data access:
 First, authenticate with your ACLED credentials:
 
 ```bash
+# Auto-detect best authentication method (recommended)
 acled auth login
+
+# Or specify a method
+acled auth login --method oauth   # OAuth tokens
+acled auth login --method cookie  # Session cookies
+acled auth login --method legacy  # API key/email
 ```
 
-This securely stores your API key and email for future use.
+This securely stores your credentials for future use.
 
 ### Basic CLI Commands
 
@@ -391,19 +390,25 @@ You can authenticate in three ways:
 
 1. **Secure login** (recommended):
    ```bash
-   acled auth login
+   acled auth login  # Prompts for credentials
    ```
 
-2. **Command-line options**:
+2. **Environment variables**:
    ```bash
-   acled data --api-key YOUR_API_KEY --email YOUR_EMAIL --country Syria
-   ```
-
-3. **Environment variables**:
-   ```bash
+   # Modern auth (recommended)
+   export ACLED_USERNAME="your_email"
+   export ACLED_PASSWORD="your_password"
+   
+   # Or legacy auth
    export ACLED_API_KEY="your_api_key"
    export ACLED_EMAIL="your_email"
+   
    acled data --country Syria
+   ```
+
+3. **Command-line options** (legacy only):
+   ```bash
+   acled data --api-key YOUR_API_KEY --email YOUR_EMAIL --country Syria
    ```
 
 ## Important Notes
