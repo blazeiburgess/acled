@@ -211,16 +211,19 @@ Examples:
                     if not self._validate_cookie_credentials(username.strip(), password.strip()):
                         print("Error: Failed to authenticate with cookie method.")
                         return 1
+                    validated_method = 'cookie'
                 else:  # oauth or auto (which tries oauth first)
-                    if not self._validate_modern_credentials(username.strip(), password.strip()):
+                    validated_method = self._validate_modern_credentials(username.strip(), password.strip())
+                    if not validated_method:
                         print("Error: Failed to authenticate. Please check your credentials.")
                         return 1
-                
+                    auth_method = validated_method
+
                 # Store credentials
                 self.credential_manager.store_credentials(
                     username=username.strip(),
                     password=password.strip(),
-                    auth_method=auth_method if auth_method != 'auto' else 'oauth'
+                    auth_method=validated_method
                 )
 
             print(f"✓ Credentials stored securely using {auth_method} authentication.")
@@ -339,14 +342,18 @@ Examples:
         except Exception:
             return False
     
-    def _validate_modern_credentials(self, username: str, password: str) -> bool:
-        """Validate modern credentials (OAuth/Cookie) by testing authentication."""
+    def _validate_modern_credentials(self, username: str, password: str) -> Optional[str]:
+        """Validate modern credentials by testing authentication.
+
+        Returns:
+            The auth method that succeeded ('oauth' or 'cookie'), or None on failure.
+        """
         try:
             # Try OAuth first
             auth = OAuthTokenAuth(username=username, password=password)
             client = AcledClient(auth_method=auth)
             client.get_data(limit=1)
-            return True
+            return 'oauth'
         except Exception:
             # If OAuth fails, try cookie
             try:
@@ -354,9 +361,9 @@ Examples:
                 auth = CookieAuth(username=username, password=password)
                 client = AcledClient(auth_method=auth)
                 client.get_data(limit=1)
-                return True
+                return 'cookie'
             except Exception:
-                return False
+                return None
     
     def _validate_cookie_credentials(self, username: str, password: str) -> bool:
         """Validate cookie credentials by testing authentication."""
