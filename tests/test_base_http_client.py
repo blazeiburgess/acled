@@ -206,5 +206,53 @@ def test_401_twice_raises_after_refresh(mock_environ, mock_requests_session, moc
             client._get('/test')
 
 
+def test_legacy_positional_args_raises_helpful_error(mock_environ, mock_requests_session, mock_logger):
+    """Test that passing an API key as first positional arg gives a clear error."""
+    with pytest.raises(TypeError, match="positional.*removed"):
+        BaseHttpClient("some_api_key_value")
+
+
+def test_force_refresh_failure_is_retryable(mock_environ, mock_requests_session, mock_logger):
+    """Test that force_refresh() failure doesn't immediately abort the request."""
+    from acled.exceptions import ApiError, RetryError
+
+    client = BaseHttpClient()
+
+    # All responses return 401
+    mock_response_401 = MagicMock()
+    mock_response_401.status_code = 401
+    mock_response_401.raise_for_status.side_effect = requests.HTTPError("401 Unauthorized")
+
+    mock_requests_session.get.return_value = mock_response_401
+
+    mock_force_refresh = MagicMock(side_effect=ApiError("Token endpoint down"))
+    with patch.object(client.auth, 'force_refresh', mock_force_refresh):
+        # Should exhaust retries rather than raising ApiError immediately
+        with pytest.raises((requests.HTTPError, RetryError)):
+            client._get('/test')
+
+    # force_refresh was called (once, since auth_refreshed gets set)
+    assert mock_force_refresh.call_count == 1
+
+
+def test_pre_request_refresh_failure_continues(mock_environ, mock_requests_session, mock_logger):
+    """Test that refresh_if_needed() failure before retry loop doesn't abort."""
+    from acled.exceptions import ApiError
+
+    client = BaseHttpClient()
+
+    # refresh_if_needed fails but the request succeeds
+    mock_response_200 = MagicMock()
+    mock_response_200.status_code = 200
+    mock_response_200.json.return_value = {'data': 'test'}
+    mock_response_200.content = b'{"data": "test"}'
+    mock_requests_session.get.return_value = mock_response_200
+
+    with patch.object(client.auth, 'refresh_if_needed', side_effect=ApiError("Token refresh failed")):
+        result = client._get('/test')
+
+    assert result == {'data': 'test'}
+
+
 if __name__ == "__main__":
     pytest.main()
