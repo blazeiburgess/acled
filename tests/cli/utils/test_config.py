@@ -150,5 +150,60 @@ class TestCLIConfig(unittest.TestCase):
         self.assertIsNone(config.email)
 
 
+    @patch('acled.cli.utils.config.AuthFactory')
+    @patch('acled.cli.utils.config.CredentialManager')
+    def test_cookie_auth_from_stored_credentials(self, mock_credential_manager_class, mock_factory):
+        """Test that stored cookie credentials create CookieAuth."""
+        from acled.cli.utils.config import CLIConfig
+
+        mock_manager = Mock()
+        mock_manager.has_stored_credentials.return_value = True
+        mock_manager.get_credentials.return_value = {
+            'auth_method': 'cookie',
+            'username': 'user@example.com',
+            'password': 'secret'
+        }
+        mock_credential_manager_class.return_value = mock_manager
+        mock_auth = Mock()
+        mock_factory.create_auth.return_value = mock_auth
+
+        config = CLIConfig(self.mock_args)
+
+        mock_factory.create_auth.assert_called_with(
+            'cookie', username='user@example.com', password='secret'
+        )
+        self.assertIs(config.auth_method, mock_auth)
+
+    @patch('acled.cli.utils.config.AuthFactory')
+    @patch.dict(os.environ, {
+        'ACLED_USERNAME': 'user', 'ACLED_PASSWORD': 'pass'
+    }, clear=False)
+    def test_modern_auth_from_env_vars(self, mock_factory):
+        """Test that ACLED_USERNAME/ACLED_PASSWORD env vars use auto auth."""
+        from acled.cli.utils.config import CLIConfig
+
+        mock_auth = Mock()
+        mock_factory.create_auth.return_value = mock_auth
+
+        config = CLIConfig(self.mock_args)
+
+        mock_factory.create_auth.assert_called_with(
+            'auto', username='user', password='pass'
+        )
+        self.assertIs(config.auth_method, mock_auth)
+
+    @patch('acled.cli.utils.config.CredentialManager')
+    def test_unexpected_exception_propagates(self, mock_credential_manager_class):
+        """Test that non-AuthenticationError exceptions propagate."""
+        from acled.cli.utils.config import CLIConfig
+
+        mock_manager = Mock()
+        mock_manager.has_stored_credentials.side_effect = RuntimeError("disk error")
+        mock_credential_manager_class.return_value = mock_manager
+
+        with self.assertRaises(RuntimeError):
+            CLIConfig(self.mock_args)
+
+
 if __name__ == '__main__':
     unittest.main()
