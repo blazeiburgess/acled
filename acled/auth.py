@@ -203,9 +203,6 @@ class OAuthTokenAuth(AuthMethod):
         # If we don't have valid tokens, obtain them
         if not self.is_authenticated():
             self._obtain_token()
-            # Save tokens if we have a token file
-            if self.token_file:
-                self.save_tokens(self.token_file)
 
         self.log.info("Initialized OAuth token authentication")
 
@@ -299,6 +296,12 @@ class OAuthTokenAuth(AuthMethod):
         self.refresh_token_expires_at = now + timedelta(seconds=refresh_expires_in - 3600)
 
         self.log.debug("Token obtained, expires at %s", self.access_token_expires_at)
+        self._persist_tokens()
+
+    def _persist_tokens(self) -> None:
+        """Save tokens to disk if a token file is configured."""
+        if self.token_file:
+            self.save_tokens(self.token_file)
 
     def authenticate(self, session: requests.Session, params: Dict[str, Any]) -> Dict[str, Any]:
         """Add Bearer token to session headers.
