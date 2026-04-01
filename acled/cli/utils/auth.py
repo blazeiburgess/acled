@@ -8,6 +8,7 @@ from typing import Optional, Tuple
 
 try:
     import keyring
+
     HAS_KEYRING = True
 except ImportError:
     keyring = None
@@ -18,6 +19,7 @@ try:
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
     import base64
+
     HAS_CRYPTOGRAPHY = True
 except ImportError:
     Fernet = None
@@ -37,6 +39,9 @@ class CredentialManager:
     SERVICE_NAME = "acled-cli"
     API_KEY_USERNAME = "api-key"
     EMAIL_USERNAME = "email"
+    USERNAME_KEY = "username"
+    PASSWORD_KEY = "password"
+    AUTH_METHOD_KEY = "auth-method"
 
     def __init__(self):
         self.use_keyring = HAS_KEYRING and self._keyring_available()
@@ -56,14 +61,27 @@ class CredentialManager:
         except Exception:
             return False
 
-    def store_credentials(self, api_key: str, email: str) -> None:
+    def store_credentials(
+            self,
+            api_key: Optional[str] = None,
+            email: Optional[str] = None,
+            username: Optional[str] = None,
+            password: Optional[str] = None,
+            auth_method: str = "legacy"
+    ) -> None:
         """Store credentials securely."""
         if self.use_keyring:
-            self._store_with_keyring(api_key, email)
+            self._store_with_keyring(
+                api_key=api_key, email=email, username=username,
+                password=password, auth_method=auth_method
+            )
         else:
-            self._store_with_encryption(api_key, email)
+            self._store_with_encryption(
+                api_key=api_key, email=email, username=username,
+                password=password, auth_method=auth_method
+            )
 
-    def get_credentials(self) -> Tuple[str, str]:
+    def get_credentials(self) -> dict:
         """Retrieve stored credentials."""
         if self.use_keyring:
             return self._get_from_keyring()
@@ -73,16 +91,20 @@ class CredentialManager:
     def has_stored_credentials(self) -> bool:
         """Check if credentials are stored."""
         try:
-            api_key, email = self.get_credentials()
-            return bool(api_key and email)
+            creds = self.get_credentials()
+            auth_method = creds.get('auth_method', 'legacy')
+            if auth_method == 'legacy':
+                return bool(creds.get('api_key') and creds.get('email'))
+            else:  # oauth
+                return bool(creds.get('username') and creds.get('password'))
         except Exception:
             return False
 
     def get_stored_email(self) -> Optional[str]:
         """Get just the stored email (for status display)."""
         try:
-            _, email = self.get_credentials()
-            return email
+            creds = self.get_credentials()
+            return creds.get('email') or creds.get('username')
         except Exception:
             return None
 
@@ -93,24 +115,59 @@ class CredentialManager:
         else:
             self._clear_encrypted_file()
 
-    def _store_with_keyring(self, api_key: str, email: str) -> None:
+    def _store_with_keyring(
+            self,
+            api_key: Optional[str] = None,
+            email: Optional[str] = None,
+            username: Optional[str] = None,
+            password: Optional[str] = None,
+            auth_method: str = "legacy"
+    ) -> None:
         """Store credentials using system keyring."""
         try:
-            keyring.set_password(self.SERVICE_NAME, self.API_KEY_USERNAME, api_key)
-            keyring.set_password(self.SERVICE_NAME, self.EMAIL_USERNAME, email)
+            # Store auth method
+            keyring.set_password(self.SERVICE_NAME, self.AUTH_METHOD_KEY, auth_method)
+
+            # Store appropriate credentials based on auth method
+            if auth_method == "legacy":
+                if api_key:
+                    keyring.set_password(self.SERVICE_NAME, self.API_KEY_USERNAME, api_key)
+                if email:
+                    keyring.set_password(self.SERVICE_NAME, self.EMAIL_USERNAME, email)
+            else:  # oauth
+                if username:
+                    keyring.set_password(self.SERVICE_NAME, self.USERNAME_KEY, username)
+                if password:
+                    keyring.set_password(self.SERVICE_NAME, self.PASSWORD_KEY, password)
         except Exception as e:
             raise AuthenticationError(f"Failed to store credentials in keyring: {e}") from e
 
-    def _get_from_keyring(self) -> Tuple[str, str]:
+    def _get_from_keyring(self) -> dict:
         """Retrieve credentials from system keyring."""
         try:
-            api_key = keyring.get_password(self.SERVICE_NAME, self.API_KEY_USERNAME)
-            email = keyring.get_password(self.SERVICE_NAME, self.EMAIL_USERNAME)
+            auth_method = keyring.get_password(self.SERVICE_NAME, self.AUTH_METHOD_KEY) or "legacy"
 
-            if not api_key or not email:
-                raise AuthenticationError("No stored credentials found")
+            result = {'auth_method': auth_method}
 
-            return api_key, email
+            if auth_method == "legacy":
+                api_key = keyring.get_password(self.SERVICE_NAME, self.API_KEY_USERNAME)
+                email = keyring.get_password(self.SERVICE_NAME, self.EMAIL_USERNAME)
+                if not api_key or not email:
+                    raise AuthenticationError("No stored credentials found")
+                result.update({'api_key': api_key, 'email': email})
+            else:  # oauth
+                username = keyring.get_password(self.SERVICE_NAME, self.USERNAME_KEY)
+                password = keyring.get_password(self.SERVICE_NAME, self.PASSWORD_KEY)
+
+                if not (username and password):
+                    raise AuthenticationError("No stored OAuth credentials found")
+
+                result.update({
+                    'username': username,
+                    'password': password
+                })
+
+            return result
         except AuthenticationError:
             raise
         except Exception as e:
@@ -118,12 +175,21 @@ class CredentialManager:
 
     def _clear_keyring(self) -> None:
         """Clear credentials from system keyring."""
-        try:
-            keyring.delete_password(self.SERVICE_NAME, self.API_KEY_USERNAME)
-            keyring.delete_password(self.SERVICE_NAME, self.EMAIL_USERNAME)
-        except Exception:
-            # Ignore errors when clearing (credentials might not exist)
-            pass
+        # Try to delete all possible credential keys
+        keys_to_delete = [
+            self.API_KEY_USERNAME,
+            self.EMAIL_USERNAME,
+            self.USERNAME_KEY,
+            self.PASSWORD_KEY,
+            self.AUTH_METHOD_KEY
+        ]
+
+        for key in keys_to_delete:
+            try:
+                keyring.delete_password(self.SERVICE_NAME, key)
+            except Exception:
+                # Ignore errors when clearing (credentials might not exist)
+                pass
 
     def _get_config_dir(self) -> Path:
         """Get platform-appropriate config directory."""
@@ -159,23 +225,35 @@ class CredentialManager:
         machine_id = f"{platform.node()}-{platform.system()}-{getpass.getuser()}"
         return machine_id[:32].ljust(32, '0')  # Ensure consistent length
 
-    def _store_with_encryption(self, api_key: str, email: str) -> None:
+    def _store_with_encryption(
+            self,
+            api_key: Optional[str] = None,
+            email: Optional[str] = None,
+            username: Optional[str] = None,
+            password: Optional[str] = None,
+            auth_method: str = "legacy"
+    ) -> None:
         """Store credentials using file encryption."""
         try:
             # Use machine-specific password for encryption
-            password = self._get_machine_identifier()
+            machine_password = self._get_machine_identifier()
             salt = os.urandom(16)
-            key = self._derive_key(password, salt)
+            key = self._derive_key(machine_password, salt)
             fernet = Fernet(key)
 
             # Prepare data to encrypt
-            data = json.dumps({
+            data = {
+                "auth_method": auth_method,
                 "api_key": api_key,
-                "email": email
-            })
+                "email": email,
+                "username": username,
+                "password": password
+            }
+            # Remove None values
+            data = {k: v for k, v in data.items() if v is not None}
 
             # Encrypt data
-            encrypted_data = fernet.encrypt(data.encode())
+            encrypted_data = fernet.encrypt(json.dumps(data).encode())
 
             # Store salt and encrypted data
             credentials_file = self._get_credentials_file()
@@ -189,7 +267,7 @@ class CredentialManager:
         except Exception as e:
             raise AuthenticationError(f"Failed to store encrypted credentials: {e}") from e
 
-    def _get_from_encrypted_file(self) -> Tuple[str, str]:
+    def _get_from_encrypted_file(self) -> dict:
         """Retrieve credentials from encrypted file."""
         try:
             credentials_file = self._get_credentials_file()
@@ -204,14 +282,20 @@ class CredentialManager:
             encrypted_data = file_data[16:]
 
             # Decrypt data
-            password = self._get_machine_identifier()
-            key = self._derive_key(password, salt)
+            machine_password = self._get_machine_identifier()
+            key = self._derive_key(machine_password, salt)
             fernet = Fernet(key)
 
             decrypted_data = fernet.decrypt(encrypted_data)
             data = json.loads(decrypted_data.decode())
 
-            return data["api_key"], data["email"]
+            # Ensure auth_method is present
+            if 'auth_method' not in data:
+                # Legacy data format - assume legacy auth
+                if 'api_key' in data and 'email' in data:
+                    data['auth_method'] = 'legacy'
+
+            return data
 
         except AuthenticationError:
             raise
