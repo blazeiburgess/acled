@@ -23,8 +23,13 @@ class AcledDataClient(BaseHttpClient):
     Client for interacting with the ACLED main dataset endpoint.
     """
 
-    def __init__(self, api_key: str, email: str):
-        super().__init__(api_key, email)
+    def __init__(self, **kwargs):
+        """Initialize the ACLED data client.
+        
+        Args:
+            **kwargs: Authentication parameters passed to BaseHttpClient
+        """
+        super().__init__(**kwargs)
         self.endpoint = "/acled/read"
 
     def get_data(
