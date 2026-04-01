@@ -7,6 +7,7 @@ from typing import Optional
 
 from acled.cli.utils.auth import CredentialManager, AuthenticationError
 from acled.clients import AcledClient
+from acled.auth import AuthFactory, OAuthTokenAuth
 
 
 class AuthCommand:
@@ -56,12 +57,28 @@ Examples:
             help='Store API credentials securely'
         )
         login_parser.add_argument(
+            '--method',
+            choices=['auto', 'legacy', 'oauth', 'cookie'],
+            default='auto',
+            help='Authentication method (default: auto-detect best available)'
+        )
+        # Legacy auth options
+        login_parser.add_argument(
             '--api-key',
-            help='ACLED API key (will prompt if not provided)'
+            help='ACLED API key (for legacy auth, will prompt if not provided)'
         )
         login_parser.add_argument(
             '--email',
-            help='Email address (will prompt if not provided)'
+            help='Email address (for legacy auth, will prompt if not provided)'
+        )
+        # OAuth options
+        login_parser.add_argument(
+            '--username',
+            help='ACLED username (for OAuth, will prompt if not provided)'
+        )
+        login_parser.add_argument(
+            '--password',
+            help='ACLED password (for OAuth, will prompt if not provided)'
         )
         login_parser.add_argument(
             '--force',
@@ -114,32 +131,99 @@ Examples:
                 print("Use 'acled auth login --force' to overwrite, or 'acled auth logout' first.")
                 return 1
 
-            # Get credentials
-            api_key = args.api_key
-            email = args.email
+            auth_method = args.method
+            
+            # For auto mode, detect based on provided credentials
+            if auth_method == 'auto':
+                # Check what credentials we're getting
+                has_username = bool(args.username or args.email)
+                has_password = bool(args.password)
+                has_api_key = bool(args.api_key)
+                
+                if has_username or has_password:
+                    # Modern auth - will auto-select OAuth or Cookie
+                    auth_method = 'oauth'  # Factory will handle fallback to cookie
+                elif has_api_key:
+                    auth_method = 'legacy'
+                else:
+                    # Will prompt for credentials, default to modern auth
+                    print("Choose authentication method:")
+                    print("1. Modern (OAuth/Cookie) - Recommended")
+                    print("2. Legacy (API Key/Email)")
+                    choice = input("Enter choice (1 or 2): ").strip()
+                    if choice == "2":
+                        auth_method = 'legacy'
+                    else:
+                        auth_method = 'oauth'
+            
+            if auth_method == 'legacy':
+                # Get legacy credentials
+                api_key = args.api_key
+                email = args.email
 
-            # Prompt for missing credentials
-            if not api_key:
-                api_key = getpass.getpass("ACLED API Key: ")
-                if not api_key.strip():
-                    print("Error: API key is required.")
+                # Prompt for missing credentials
+                if not api_key:
+                    api_key = getpass.getpass("ACLED API Key: ")
+                    if not api_key.strip():
+                        print("Error: API key is required for legacy authentication.")
+                        return 1
+
+                if not email:
+                    email = input("Email address: ")
+                    if not email.strip():
+                        print("Error: Email address is required for legacy authentication.")
+                        return 1
+
+                # Validate credentials by testing with API
+                print("Validating credentials...")
+                if not self._validate_legacy_credentials(api_key.strip(), email.strip()):
+                    print("Error: Invalid credentials. Please check your API key and email.")
                     return 1
 
-            if not email:
-                email = input("Email address: ")
-                if not email.strip():
-                    print("Error: Email address is required.")
-                    return 1
+                # Store credentials securely
+                self.credential_manager.store_credentials(
+                    api_key=api_key.strip(),
+                    email=email.strip(),
+                    auth_method='legacy'
+                )
+                
+            else:  # oauth or cookie
+                # Handle modern authentication (OAuth/Cookie)
+                username = args.username or args.email  # Accept either
+                password = args.password
+                
+                # Prompt for missing credentials
+                if not username:
+                    username = input("ACLED Username/Email: ")
+                    if not username.strip():
+                        print("Error: Username/email is required for authentication.")
+                        return 1
+                
+                if not password:
+                    password = getpass.getpass("ACLED Password: ")
+                    if not password.strip():
+                        print("Error: Password is required for authentication.")
+                        return 1
+                
+                # Validate credentials
+                print(f"Validating {auth_method} credentials...")
+                if auth_method == 'cookie':
+                    if not self._validate_cookie_credentials(username.strip(), password.strip()):
+                        print("Error: Failed to authenticate with cookie method.")
+                        return 1
+                else:  # oauth or auto (which tries oauth first)
+                    if not self._validate_modern_credentials(username.strip(), password.strip()):
+                        print("Error: Failed to authenticate. Please check your credentials.")
+                        return 1
+                
+                # Store credentials
+                self.credential_manager.store_credentials(
+                    username=username.strip(),
+                    password=password.strip(),
+                    auth_method=auth_method if auth_method != 'auto' else 'oauth'
+                )
 
-            # Validate credentials by testing with API
-            print("Validating credentials...")
-            if not self._validate_credentials(api_key.strip(), email.strip()):
-                print("Error: Invalid credentials. Please check your API key and email.")
-                return 1
-
-            # Store credentials securely
-            self.credential_manager.store_credentials(api_key.strip(), email.strip())
-            print("✓ Credentials stored securely.")
+            print(f"✓ Credentials stored securely using {auth_method} authentication.")
             print("You can now use ACLED CLI commands without providing credentials.")
 
             return 0
@@ -190,30 +274,97 @@ Examples:
                 print("✗ No stored credentials. Use 'acled auth login' first.")
                 return 1
 
-            api_key, email = self.credential_manager.get_credentials()
-            print("Testing stored credentials...")
+            creds = self.credential_manager.get_credentials()
+            auth_method = creds.get('auth_method', 'legacy')
+            print(f"Testing stored {auth_method} credentials...")
 
-            if self._validate_credentials(api_key, email):
-                print("✓ Credentials are valid.")
-                return 0
-            else:
-                print("✗ Stored credentials are invalid.")
-                print("Use 'acled auth login --force' to update them.")
-                return 1
+            if auth_method == 'legacy':
+                api_key = creds.get('api_key')
+                email = creds.get('email')
+                if self._validate_legacy_credentials(api_key, email):
+                    print("✓ Credentials are valid.")
+                    return 0
+            else:  # modern auth (oauth/cookie)
+                # Create auth instance from stored credentials  
+                try:
+                    username = creds.get('username') or creds.get('email')
+                    password = creds.get('password')
+                    if not username or not password:
+                        print("✗ Incomplete credentials stored.")
+                        return 1
+                    
+                    # Try with stored method first
+                    try:
+                        auth = AuthFactory.create_auth(
+                            auth_method,
+                            username=username,
+                            password=password
+                        )
+                        client = AcledClient(auth_method=auth)
+                        client.get_data(limit=1)
+                        print(f"✓ {auth_method.capitalize()} credentials are valid.")
+                        return 0
+                    except Exception:
+                        # Try auto-detect as fallback
+                        auth = AuthFactory.create_auth(
+                            'auto',
+                            username=username,
+                            password=password
+                        )
+                        client = AcledClient(auth_method=auth)
+                        client.get_data(limit=1)
+                        print("✓ Credentials are valid.")
+                        return 0
+                except Exception:
+                    pass
+            
+            print("✗ Stored credentials are invalid.")
+            print("Use 'acled auth login --force' to update them.")
+            return 1
 
         except Exception as e:
             print(f"Error testing credentials: {e}")
             return 1
 
-    def _validate_credentials(self, api_key: str, email: str) -> bool:
-        """Validate credentials by making a test API call."""
+    def _validate_legacy_credentials(self, api_key: str, email: str) -> bool:
+        """Validate legacy credentials by making a test API call."""
         try:
             # Create a client with the provided credentials
-            client = AcledClient(api_key=api_key, email=email)
+            client = AcledClient(auth_method="legacy", api_key=api_key, email=email)
 
             # Make a minimal test request (limit=1 to minimize data usage)
             client.get_data(limit=1)
             return True
 
+        except Exception:
+            return False
+    
+    def _validate_modern_credentials(self, username: str, password: str) -> bool:
+        """Validate modern credentials (OAuth/Cookie) by testing authentication."""
+        try:
+            # Try OAuth first
+            auth = OAuthTokenAuth(username=username, password=password)
+            client = AcledClient(auth_method=auth)
+            client.get_data(limit=1)
+            return True
+        except Exception:
+            # If OAuth fails, try cookie
+            try:
+                from acled.auth import CookieAuth
+                auth = CookieAuth(username=username, password=password)
+                client = AcledClient(auth_method=auth)
+                client.get_data(limit=1)
+                return True
+            except Exception:
+                return False
+    
+    def _validate_cookie_credentials(self, username: str, password: str) -> bool:
+        """Validate cookie credentials by testing authentication."""
+        try:
+            from acled.auth import CookieAuth
+            auth = CookieAuth(username=username, password=password)
+            client = AcledClient(auth_method=auth)
+            client.get_data(limit=1)
+            return True
         except Exception:
             return False
