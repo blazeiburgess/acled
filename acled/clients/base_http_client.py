@@ -146,6 +146,7 @@ class BaseHttpClient(object):
 
         retries = 0
         last_exception = None
+        auth_refreshed = False
 
         while retries <= self.MAX_RETRIES:
             try:
@@ -174,6 +175,19 @@ class BaseHttpClient(object):
                     retry_after = int(response.headers.get('Retry-After', 60))
                     self.log.warning("Rate limited. Retry after %ss", retry_after)
                     time.sleep(retry_after)
+                    retries += 1
+                    continue
+
+                # Handle auth errors with token refresh (once)
+                if response.status_code in (401, 403) and not auth_refreshed:
+                    self.log.warning(
+                        "Auth error (%s), refreshing credentials and retrying",
+                        response.status_code
+                    )
+                    self.auth.force_refresh(self.session)
+                    processed_params = self.process_params(params) if method.lower() == 'get' else None
+                    processed_data = self.process_params(data) if method.lower() == 'post' else None
+                    auth_refreshed = True
                     retries += 1
                     continue
 
