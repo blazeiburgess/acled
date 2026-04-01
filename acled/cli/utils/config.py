@@ -5,6 +5,10 @@ from typing import Optional, Dict, Any
 
 from acled.cli.utils.auth import CredentialManager, AuthenticationError
 from acled.auth import AuthMethod, AuthFactory
+from acled.exceptions import AcledMissingAuthError
+
+
+_NOT_LOADED = object()
 
 
 class CLIConfig:
@@ -20,10 +24,28 @@ class CLIConfig:
         # Authentication (backward compatibility)
         self.api_key = self._get_api_key()
         self.email = self._get_email()
-        
-        # New authentication system
-        self.auth_method = self._get_auth_method()
-        self.auth_kwargs = self._get_auth_kwargs()
+
+        # Deferred authentication - constructed on first access
+        self._auth_method = _NOT_LOADED
+        self._auth_kwargs = _NOT_LOADED
+
+    @property
+    def auth_method(self) -> Optional[AuthMethod]:
+        """Get authentication method, constructed lazily on first access."""
+        if self._auth_method is _NOT_LOADED:
+            self._auth_method = self._get_auth_method()
+        return self._auth_method
+
+    @auth_method.setter
+    def auth_method(self, value):
+        self._auth_method = value
+
+    @property
+    def auth_kwargs(self) -> Dict[str, Any]:
+        """Get authentication kwargs, constructed lazily on first access."""
+        if self._auth_kwargs is _NOT_LOADED:
+            self._auth_kwargs = self._get_auth_kwargs()
+        return self._auth_kwargs
 
     def _get_api_key(self) -> Optional[str]:
         """Get API key from arguments, environment, or stored credentials."""
@@ -73,28 +95,24 @@ class CLIConfig:
         return None
 
     def _get_auth_method(self) -> Optional[AuthMethod]:
-        """Get authentication method from stored credentials or environment."""
+        """Get authentication method from CLI args, environment, or stored credentials."""
         # If CLI args have api_key/email, use legacy auth
         if getattr(self.args, 'api_key', None) or getattr(self.args, 'email', None):
             return None  # Will use legacy auth with api_key/email
-        
-        # Check environment variables
-        if os.environ.get('ACLED_API_KEY') and os.environ.get('ACLED_EMAIL'):
-            return None  # Will use legacy auth from env
-        elif os.environ.get('ACLED_USERNAME') and os.environ.get('ACLED_PASSWORD'):
-            return AuthFactory.create_auth(
-                'auto',
-                username=os.environ.get('ACLED_USERNAME'),
-                password=os.environ.get('ACLED_PASSWORD')
-            )
-        
+
+        # Use AuthFactory.from_environment() for consistent precedence with the library
+        try:
+            return AuthFactory.from_environment()
+        except AcledMissingAuthError:
+            pass
+
         # Try to get from stored credentials
         try:
             credential_manager = CredentialManager()
             if credential_manager.has_stored_credentials():
                 creds = credential_manager.get_credentials()
                 auth_method = creds.get('auth_method', 'legacy')
-                
+
                 if auth_method == 'oauth':
                     return AuthFactory.create_auth(
                         'oauth',
@@ -112,15 +130,15 @@ class CLIConfig:
                     return None
         except AuthenticationError:
             pass
-        
+
         return None
-    
+
     def _get_auth_kwargs(self) -> Dict[str, Any]:
         """Get authentication kwargs for client initialization."""
         # If we have an auth_method object, no kwargs needed
         if self.auth_method:
             return {}
-        
+
         # Otherwise, use legacy api_key/email if available
         kwargs = {}
         if self.api_key:
