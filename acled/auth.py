@@ -14,6 +14,7 @@ from typing import Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
 from os import environ
 import json
+import warnings
 
 import requests
 from requests.exceptions import RequestException
@@ -72,8 +73,10 @@ class AuthMethod(ABC):
 class LegacyKeyEmailAuth(AuthMethod):
     """Legacy authentication using API key and email.
 
-    This is the traditional ACLED authentication method that includes
-    the API key and email in every request's query parameters.
+    .. deprecated::
+        Legacy key/email authentication is deprecated and will be removed in a
+        future release. ACLED no longer supports API key/email query parameter
+        authentication. Use OAuth (``ACLED_USERNAME``/``ACLED_PASSWORD``) instead.
     """
 
     def __init__(self, api_key: Optional[str] = None, email: Optional[str] = None):
@@ -86,6 +89,15 @@ class LegacyKeyEmailAuth(AuthMethod):
         Raises:
             AcledMissingAuthError: If api_key or email is missing
         """
+        warnings.warn(
+            "Legacy key/email authentication is deprecated and will be removed "
+            "in a future release. ACLED no longer supports API key/email query "
+            "parameter authentication. Use OAuth with ACLED_USERNAME and "
+            "ACLED_PASSWORD environment variables instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         self.api_key = api_key if api_key else environ.get("ACLED_API_KEY")
         if not self.api_key:
             raise AcledMissingAuthError("API key is required for legacy authentication")
