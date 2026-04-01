@@ -14,10 +14,14 @@ class BaseCommand(ABC):
 
     def __init__(self, config: CLIConfig):
         self.config = config
-        self.client = AcledClient(
-            api_key=config.api_key,
-            email=config.email
-        )
+        # Use new auth method if available, otherwise fall back to legacy
+        if config.auth_method:
+            self.client = AcledClient(auth_method=config.auth_method)
+        else:
+            self.client = AcledClient(
+                api_key=config.api_key,
+                email=config.email
+            )
 
     @classmethod
     @abstractmethod
