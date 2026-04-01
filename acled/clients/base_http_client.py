@@ -25,6 +25,23 @@ from acled.auth import AuthMethod, AuthFactory, LegacyKeyEmailAuth
 
 T = TypeVar('T')
 
+_VALID_AUTH_METHODS = {'auto', 'oauth', 'cookie', 'legacy'}
+
+
+def _validate_auth_method_arg(auth_method):
+    """Detect legacy positional constructor usage and raise a helpful error."""
+    if (isinstance(auth_method, str)
+            and not isinstance(auth_method, AuthMethod)
+            and auth_method.lower() not in _VALID_AUTH_METHODS):
+        raise TypeError(
+            f"Unknown auth method '{auth_method}'. "
+            "The positional (api_key, email) constructor has been removed. "
+            "Use keyword arguments instead: "
+            "AcledClient(api_key='...', email='...') or "
+            "AcledClient(auth_method='legacy', api_key='...', email='...')"
+        )
+
+
 class BaseHttpClient(object):
     """
     A base HTTP client that provides basic GET and POST request functionality.
@@ -44,7 +61,9 @@ class BaseHttpClient(object):
             **auth_kwargs: Authentication parameters (username, password, api_key, email, etc.)
         """
         self.log = AcledLogger().get_logger()
-        
+
+        _validate_auth_method_arg(auth_method)
+
         # Simple auth handling - delegate all logic to AuthFactory
         if isinstance(auth_method, AuthMethod):
             self.auth = auth_method
@@ -131,8 +150,11 @@ class BaseHttpClient(object):
         url = f"{self.BASE_URL}{endpoint}"
         timeout = timeout or self.DEFAULT_TIMEOUT
         
-        # Refresh authentication if needed
-        self.auth.refresh_if_needed(self.session)
+        # Refresh authentication if needed (non-fatal — will retry via 401 path)
+        try:
+            self.auth.refresh_if_needed(self.session)
+        except Exception as e:
+            self.log.warning("Pre-request auth refresh failed: %s", str(e))
         
         processed_params = self.process_params(params) if method.lower() == 'get' else None
         processed_data = self.process_params(data) if method.lower() == 'post' else None
@@ -184,9 +206,13 @@ class BaseHttpClient(object):
                         "Auth error (%s), refreshing credentials and retrying",
                         response.status_code
                     )
-                    self.auth.force_refresh(self.session)
-                    processed_params = self.process_params(params) if method.lower() == 'get' else None
-                    processed_data = self.process_params(data) if method.lower() == 'post' else None
+                    try:
+                        self.auth.force_refresh(self.session)
+                        processed_params = self.process_params(params) if method.lower() == 'get' else None
+                        processed_data = self.process_params(data) if method.lower() == 'post' else None
+                    except Exception as e:
+                        self.log.warning("Auth refresh failed: %s", str(e))
+                        last_exception = ApiError(f"Auth refresh failed: {str(e)}")
                     auth_refreshed = True
                     retries += 1
                     continue
