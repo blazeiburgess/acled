@@ -19,8 +19,13 @@ class ActorTypeClient(BaseHttpClient):
     Client for interacting with the ACLED actor type endpoint.
     """
 
-    def __init__(self, api_key: str, email: str):
-        super().__init__(api_key, email)
+    def __init__(self, **kwargs):
+        """Initialize the actor type client.
+        
+        Args:
+            **kwargs: Authentication parameters passed to BaseHttpClient
+        """
+        super().__init__(**kwargs)
         self.endpoint = "/actortype/read"
 
     def get_data(
