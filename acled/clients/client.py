@@ -16,6 +16,7 @@ from acled.clients.country_client import CountryClient
 from acled.clients.region_client import RegionClient
 from acled.models import AcledEvent, Actor, ActorType, Country, Region
 from acled.models.enums import ExportType
+from acled.auth import AuthMethod, AuthFactory
 
 
 class AcledClient:
@@ -49,16 +50,46 @@ class AcledClient:
                 Function to fetch region data.
     """
 
-    def __init__(
-            self,
-            api_key: Optional[str] = None,
-            email: Optional[str] = None
-    ):
-        self._acled_data_client = AcledDataClient(api_key, email)
-        self._actor_client = ActorClient(api_key, email)
-        self._country_client = CountryClient(api_key, email)
-        self._region_client = RegionClient(api_key, email)
-        self._actor_type_client = ActorTypeClient(api_key, email)
+    def __init__(self, auth_method: Optional[Union[str, AuthMethod]] = None, **auth_kwargs):
+        """Initialize the ACLED client with authentication.
+        
+        Args:
+            auth_method: Authentication method (AuthMethod instance, method name, or None for auto)
+            **auth_kwargs: Authentication parameters (username, password, api_key, email, etc.)
+            
+        Examples:
+            # Auto-detect from environment
+            client = AcledClient()
+            
+            # OAuth/Cookie authentication (auto-selects best)
+            client = AcledClient(username="user", password="pass")
+            
+            # Legacy authentication
+            client = AcledClient(api_key="key", email="email")
+            
+            # Specific method
+            client = AcledClient(auth_method="oauth", username="user", password="pass")
+            
+            # With AuthMethod instance
+            from acled.auth import OAuthTokenAuth
+            auth = OAuthTokenAuth(username="user", password="pass")
+            client = AcledClient(auth_method=auth)
+        """
+        # Resolve auth ONCE and share across all sub-clients
+        if isinstance(auth_method, AuthMethod):
+            auth = auth_method
+        elif auth_method:
+            auth = AuthFactory.create_auth(auth_method, **auth_kwargs)
+        elif auth_kwargs:
+            auth = AuthFactory.create_auth("auto", **auth_kwargs)
+        else:
+            auth = AuthFactory.from_environment()
+
+        self._acled_data_client = AcledDataClient(auth_method=auth)
+        self._actor_client = ActorClient(auth_method=auth)
+        self._country_client = CountryClient(auth_method=auth)
+        self._region_client = RegionClient(auth_method=auth)
+        self._actor_type_client = ActorTypeClient(auth_method=auth)
 
 
     def get_data(
