@@ -1,6 +1,7 @@
 """Secure credential storage utilities."""
 
 import json
+import logging
 import os
 import platform
 from pathlib import Path
@@ -44,6 +45,7 @@ class CredentialManager:
     AUTH_METHOD_KEY = "auth-method"
 
     def __init__(self):
+        self._log = logging.getLogger(__name__)
         self.use_keyring = HAS_KEYRING and self._keyring_available()
         self.use_encryption = HAS_CRYPTOGRAPHY
 
@@ -51,6 +53,14 @@ class CredentialManager:
             raise AuthenticationError(
                 "Neither keyring nor cryptography is available. "
                 "Install with: pip install acled[cli]"
+            )
+
+        if not self.use_keyring and self.use_encryption:
+            self._log.warning(
+                "System keyring unavailable; falling back to file-based "
+                "credential storage. Credentials are encrypted but the "
+                "encryption key is derived from machine identity, which "
+                "provides limited protection."
             )
 
     def _keyring_available(self) -> bool:
@@ -107,6 +117,14 @@ class CredentialManager:
             return creds.get('email') or creds.get('username')
         except Exception:
             return None
+
+    def get_token_file(self) -> str:
+        """Get path to the OAuth token cache file.
+
+        Returns:
+            str: Absolute path to the token cache file.
+        """
+        return str(self._get_config_dir() / "tokens.json")
 
     def clear_credentials(self) -> None:
         """Clear stored credentials."""
