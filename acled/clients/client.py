@@ -7,7 +7,7 @@ This simplifies usage and provides a consistent entry point for all API interact
 """
 
 from typing import Optional, Any, Dict, List, Union
-from datetime import datetime, date
+from datetime import date
 
 from acled.clients.acled_data_client import AcledDataClient
 from acled.clients.actor_client import ActorClient
@@ -17,7 +17,7 @@ from acled.clients.country_client import CountryClient
 from acled.clients.deleted_client import DeletedClient
 from acled.clients.region_client import RegionClient
 from acled.models import AcledEvent, Actor, ActorType, CastForecast, DeletedEvent, Country, Region
-from acled.models.enums import ResponseFormat, ExportType
+from acled.models.enums import ResponseFormat
 from acled.auth import AuthMethod, AuthFactory
 from acled.clients.base_http_client import _validate_auth_method_arg, _handle_legacy_positional_args
 

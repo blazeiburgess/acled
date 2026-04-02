@@ -11,7 +11,7 @@ import requests
 
 from acled.clients.base_http_client import BaseHttpClient
 from acled.models import Country
-from acled.models.enums import ResponseFormat, ExportType
+from acled.models.enums import ResponseFormat
 from acled.exceptions import ApiError
 
 class CountryClient(BaseHttpClient):
