@@ -76,7 +76,7 @@ class TestCredentialManager(unittest.TestCase):
         from acled.cli.utils.auth import CredentialManager
         
         # Mock keyring as failing
-        mock_keyring.get_keyring.side_effect = Exception("Keyring not available")
+        mock_keyring.get_keyring.side_effect = RuntimeError("Keyring not available")
         
         manager = CredentialManager()
         self.assertFalse(manager.use_keyring)
