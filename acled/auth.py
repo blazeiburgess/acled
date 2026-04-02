@@ -9,6 +9,7 @@ The module automatically selects the best available method, preferring
 modern authentication (OAuth/Cookie) over legacy when possible.
 """
 
+import os
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
