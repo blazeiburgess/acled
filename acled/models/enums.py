@@ -28,16 +28,22 @@ class DisorderType(Enum):
     STRATEGIC_DEVELOPMENTS = "Strategic developments"
 
 
-class ExportType(Enum):
-    """Enumeration for data export formats.
+class ResponseFormat(Enum):
+    """Enumeration for API response formats.
 
-    Defines the available formats for exporting ACLED data.
+    Controls the serialization format of the API response via the _format
+    parameter. This is distinct from export_type, which controls dyadic vs
+    monadic data structure on the ACLED endpoint.
     """
     JSON = "json"
     XML = "xml"
     CSV = "csv"
     XLSX = "xlsx"
     TXT = "txt"
+
+
+# Deprecated alias — use ResponseFormat instead
+ExportType = ResponseFormat
 
 class Actor(Enum):
     """
