@@ -207,9 +207,25 @@ def test_401_twice_raises_after_refresh(mock_environ, mock_requests_session, moc
 
 
 def test_legacy_positional_args_raises_helpful_error(mock_environ, mock_requests_session, mock_logger):
-    """Test that passing an API key as first positional arg gives a clear error."""
-    with pytest.raises(TypeError, match="positional.*removed"):
-        BaseHttpClient("some_api_key_value")
+    """Test that passing an unrecognized string as first positional arg gives a clear error."""
+    with pytest.raises(TypeError, match="Unknown auth method"):
+        BaseHttpClient("some_random_string")
+
+
+def test_legacy_two_positional_args_backward_compat(mock_environ, mock_requests_session, mock_logger):
+    """Test that BaseHttpClient('api_key', 'email') still works with a deprecation warning."""
+    import warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        client = BaseHttpClient("my_api_key", "user@example.com")
+
+        assert client.api_key == "my_api_key"
+        assert client.email == "user@example.com"
+
+        # Should have emitted a DeprecationWarning
+        deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)
+                                and "positional" in str(x.message).lower()]
+        assert len(deprecation_warnings) >= 1
 
 
 def test_force_refresh_failure_is_retryable(mock_environ, mock_requests_session, mock_logger):
