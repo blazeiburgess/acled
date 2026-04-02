@@ -1,7 +1,6 @@
 """Data command for retrieving ACLED events."""
 
 import argparse
-from typing import Optional
 
 from acled.cli.commands.base import BaseCommand
 
