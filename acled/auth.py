@@ -397,11 +397,14 @@ class OAuthTokenAuth(AuthMethod):
         return self.access_token, self.refresh_token
 
     def save_tokens(self, filepath: str) -> None:
-        """Save tokens to a JSON file.
+        """Save tokens to a JSON file with restricted permissions.
 
         Args:
             filepath: Path to save tokens to
         """
+        import tempfile
+        import platform
+
         token_data = {
             "access_token": self.access_token,
             "refresh_token": self.refresh_token,
@@ -415,8 +418,23 @@ class OAuthTokenAuth(AuthMethod):
             )
         }
 
-        with open(filepath, 'w') as f:
-            json.dump(token_data, f, indent=2)
+        # Atomic write: write to temp file, then rename
+        dirpath = os.path.dirname(os.path.abspath(filepath))
+        fd, tmp_path = tempfile.mkstemp(dir=dirpath, suffix='.tmp')
+        try:
+            with os.fdopen(fd, 'w') as f:
+                json.dump(token_data, f, indent=2)
+            # Set restrictive permissions before rename (Unix)
+            if platform.system() != "Windows":
+                os.chmod(tmp_path, 0o600)
+            os.replace(tmp_path, filepath)
+        except Exception:
+            # Clean up temp file on failure
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
         self.log.info("Tokens saved to %s", filepath)
 
@@ -680,17 +698,15 @@ class AuthFactory:
                     password=password,
                     token_file=kwargs.get("token_file")
                 )
-            except AcledMissingAuthError:
-                # Missing credentials for OAuth — try cookie auth
+            except (AcledMissingAuthError, ApiError):
+                # OAuth failed (missing creds, bad creds, or endpoint down) — try cookie
                 try:
                     return CookieAuth(username=username, password=password)
-                except AcledMissingAuthError:
-                    # Missing credentials for cookie too — fall back to legacy
+                except (AcledMissingAuthError, ApiError):
+                    # Cookie also failed — fall back to legacy if available
                     if api_key and email:
                         return LegacyKeyEmailAuth(api_key=api_key, email=email)
                     raise
-                # ApiError, NetworkError, etc. from OAuth/Cookie propagate
-                # — they indicate the credentials were tried and failed
 
         # Use legacy if only API key/email available
         elif api_key and email:
@@ -748,14 +764,14 @@ class AuthFactory:
                     username=username,
                     password=password
                 )
-            except AcledMissingAuthError:
+            except (AcledMissingAuthError, ApiError):
                 try:
                     return AuthFactory.create_auth(
                         "cookie",
                         username=username,
                         password=password
                     )
-                except AcledMissingAuthError:
+                except (AcledMissingAuthError, ApiError):
                     if api_key and email:
                         return AuthFactory.create_auth(
                             "legacy",
