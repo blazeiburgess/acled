@@ -31,15 +31,12 @@ class DisorderType(Enum):
 class ResponseFormat(Enum):
     """Enumeration for API response formats.
 
-    Controls the serialization format of the API response via the _format
-    parameter. This is distinct from export_type, which controls dyadic vs
-    monadic data structure on the ACLED endpoint.
+    The library only supports JSON responses because all endpoint clients
+    expect a JSON envelope with 'success' and 'data' fields. Users who need
+    CSV/XML can use query_params={'_format': 'csv'} and handle raw responses
+    via the base client directly.
     """
     JSON = "json"
-    XML = "xml"
-    CSV = "csv"
-    XLSX = "xlsx"
-    TXT = "txt"
 
 
 # Deprecated alias — use ResponseFormat instead
