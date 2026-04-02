@@ -11,18 +11,17 @@ from os import environ
 import time
 import random
 from datetime import date, datetime
+import warnings
 
 import requests
 from requests.exceptions import RequestException, Timeout, ConnectionError, HTTPError
 
 from acled.exceptions import (
-    AcledMissingAuthError, ApiError, NetworkError, TimeoutError,
+    ApiError, NetworkError, TimeoutError,
     RetryError, RateLimitError, ServerError, ClientError
 )
 from acled.log import AcledLogger
 from acled.auth import AuthMethod, AuthFactory, LegacyKeyEmailAuth
-
-import warnings
 
 T = TypeVar('T')
 
@@ -74,7 +73,7 @@ def _handle_legacy_positional_args(auth_method, auth_kwargs):
     return auth_method, auth_kwargs
 
 
-class BaseHttpClient(object):
+class BaseHttpClient:
     """
     A base HTTP client that provides basic GET and POST request functionality.
     """
@@ -108,7 +107,7 @@ class BaseHttpClient(object):
             self.auth = AuthFactory.create_auth("auto", **auth_kwargs)
         else:
             self.auth = AuthFactory.from_environment()
-        
+
         # Legacy attributes for backward compatibility
         if isinstance(self.auth, LegacyKeyEmailAuth):
             self.api_key = self.auth.api_key
@@ -116,7 +115,7 @@ class BaseHttpClient(object):
         else:
             self.api_key = None
             self.email = None
-        
+
         self.session = requests.Session()
         self.session.headers.update({'Content-Type': 'application/json'})
 
@@ -184,13 +183,13 @@ class BaseHttpClient(object):
         """
         url = f"{self.BASE_URL}{endpoint}"
         timeout = timeout or self.DEFAULT_TIMEOUT
-        
+
         # Refresh authentication if needed (non-fatal — will retry via 401 path)
         try:
             self.auth.refresh_if_needed(self.session)
         except Exception as e:
             self.log.warning("Pre-request auth refresh failed: %s", str(e))
-        
+
         processed_params = self.process_params(params) if method.lower() == 'get' else None
         processed_data = self.process_params(data) if method.lower() == 'post' else None
 
