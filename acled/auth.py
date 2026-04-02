@@ -10,6 +10,8 @@ modern authentication (OAuth/Cookie) over legacy when possible.
 """
 
 import os
+import platform
+import tempfile
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
@@ -38,7 +40,6 @@ class AuthMethod(ABC):
         Returns:
             Modified parameters dictionary
         """
-        pass
 
     @abstractmethod
     def refresh_if_needed(self, session: requests.Session) -> None:
@@ -47,7 +48,6 @@ class AuthMethod(ABC):
         Args:
             session: The requests session to potentially update
         """
-        pass
 
     @abstractmethod
     def force_refresh(self, session: requests.Session) -> None:
@@ -59,7 +59,6 @@ class AuthMethod(ABC):
         Args:
             session: The requests session to update with new credentials
         """
-        pass
 
     @abstractmethod
     def is_authenticated(self) -> bool:
@@ -68,7 +67,6 @@ class AuthMethod(ABC):
         Returns:
             True if authenticated and valid, False otherwise
         """
-        pass
 
 
 class LegacyKeyEmailAuth(AuthMethod):
@@ -126,11 +124,9 @@ class LegacyKeyEmailAuth(AuthMethod):
 
     def refresh_if_needed(self, session: requests.Session) -> None:
         """No refresh needed for legacy authentication."""
-        pass
 
     def force_refresh(self, session: requests.Session) -> None:
         """No refresh possible for legacy authentication (static credentials)."""
-        pass
 
     def is_authenticated(self) -> bool:
         """Check if API key and email are present.
@@ -403,8 +399,6 @@ class OAuthTokenAuth(AuthMethod):
         Args:
             filepath: Path to save tokens to
         """
-        import tempfile
-        import platform
 
         token_data = {
             "access_token": self.access_token,
@@ -445,7 +439,7 @@ class OAuthTokenAuth(AuthMethod):
         Args:
             filepath: Path to load tokens from
         """
-        with open(filepath, 'r') as f:
+        with open(filepath, 'r', encoding='utf-8') as f:
             token_data = json.load(f)
 
         self.access_token = token_data.get("access_token")
@@ -650,22 +644,21 @@ class AuthFactory:
                 api_key=kwargs.get("api_key"),
                 email=kwargs.get("email")
             )
-        elif method == "oauth":
+        if method == "oauth":
             return OAuthTokenAuth(
                 username=kwargs.get("username") or kwargs.get("email"),
                 password=kwargs.get("password"),
                 token_file=kwargs.get("token_file")
             )
-        elif method == "cookie":
+        if method == "cookie":
             return CookieAuth(
                 username=kwargs.get("username") or kwargs.get("email"),
                 password=kwargs.get("password")
             )
-        elif method == "auto":
+        if method == "auto":
             # Auto-detect best method based on available credentials
             return AuthFactory._auto_detect(**kwargs)
-        else:
-            raise ValueError(f"Unknown authentication method: {method}")
+        raise ValueError(f"Unknown authentication method: {method}")
 
     @staticmethod
     def _auto_detect(**kwargs) -> AuthMethod:
