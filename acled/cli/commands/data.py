@@ -4,7 +4,6 @@ import argparse
 from typing import Optional
 
 from acled.cli.commands.base import BaseCommand
-from acled.models.enums import ResponseFormat
 
 
 class DataCommand(BaseCommand):
@@ -23,7 +22,7 @@ Examples:
   # Get recent events from Syria
   acled data --country Syria --year 2024
 
-  # Get violent events with high fatalities
+  # Get violent events with fatalities
   acled data --event-type "Violence against civilians" --fatalities 10
 
   # Get events in a specific region with date range
@@ -73,7 +72,7 @@ Examples:
         event_group.add_argument(
             '--fatalities',
             type=int,
-            help='Filter by minimum number of fatalities'
+            help='Filter by exact number of fatalities'
         )
 
         # Add common options
@@ -87,13 +86,6 @@ Examples:
             '--page',
             type=int,
             help='Page number for pagination'
-        )
-        parser.add_argument(
-            '--format',
-            dest='response_format',
-            choices=['json', 'xml', 'csv', 'txt'],
-            default='json',
-            help='Response format (default: json)'
         )
         parser.add_argument(
             '--export-type',
@@ -133,8 +125,6 @@ Examples:
         params['limit'] = args.limit
         if args.page is not None:
             params['page'] = args.page
-        if hasattr(args, 'response_format') and args.response_format:
-            params['response_format'] = ResponseFormat(args.response_format)
         if hasattr(args, 'export_type') and args.export_type:
             params['export_type'] = args.export_type
 
