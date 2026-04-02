@@ -117,7 +117,8 @@ class CLIConfig:
                     return AuthFactory.create_auth(
                         'oauth',
                         username=creds.get('username'),
-                        password=creds.get('password')
+                        password=creds.get('password'),
+                        token_file=credential_manager.get_token_file()
                     )
                 elif auth_method == 'cookie':
                     return AuthFactory.create_auth(
