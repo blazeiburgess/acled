@@ -5,7 +5,7 @@ returned by the ACLED API, including events, actors, countries, regions, and
 actor types.
 """
 
-from typing import Optional, TypedDict
+from typing import Optional, TypedDict, Union
 import datetime
 
 
@@ -66,7 +66,7 @@ class Country(TypedDict, total=False):
     including its name, ISO codes, and event statistics.
     """
     country: str
-    iso: int
+    iso: Union[int, str]
     iso3: str
     first_event_date: datetime.date
     last_event_date: datetime.date
@@ -94,16 +94,16 @@ class CastForecast(TypedDict, total=False):
     country: str
     admin1: str
     month: str
-    year: int
-    total_forecast: int
-    battles_forecast: int
-    erv_forecast: int
-    vac_forecast: int
-    total_observed: int
-    battles_observed: int
-    erv_observed: int
-    vac_observed: int
-    timestamp: int
+    year: Union[int, str]
+    total_forecast: Union[int, str]
+    battles_forecast: Union[int, str]
+    erv_forecast: Union[int, str]
+    vac_forecast: Union[int, str]
+    total_observed: Union[int, str]
+    battles_observed: Union[int, str]
+    erv_observed: Union[int, str]
+    vac_observed: Union[int, str]
+    timestamp: Union[int, str]
 
 
 class DeletedEvent(TypedDict, total=False):
@@ -113,7 +113,7 @@ class DeletedEvent(TypedDict, total=False):
     along with the timestamp of its deletion.
     """
     event_id_cnty: str
-    deleted_timestamp: int
+    deleted_timestamp: Union[int, str]
 
 
 class ActorType(TypedDict, total=False):
