@@ -112,7 +112,9 @@ class TestCredentialManager(unittest.TestCase):
         }.get((service, username))
         
         manager = CredentialManager()
-        api_key, email = manager.get_credentials()
+        creds = manager.get_credentials()
+        api_key = creds.get('api_key')
+        email = creds.get('email')
         
         self.assertEqual(api_key, self.test_api_key)
         self.assertEqual(email, self.test_email)
@@ -178,7 +180,9 @@ class TestCredentialManager(unittest.TestCase):
             manager.store_credentials(self.test_api_key, self.test_email)
             
             # Then retrieve
-            api_key, email = manager.get_credentials()
+            creds = manager.get_credentials()
+            api_key = creds.get('api_key')
+            email = creds.get('email')
             
             self.assertEqual(api_key, self.test_api_key)
             self.assertEqual(email, self.test_email)

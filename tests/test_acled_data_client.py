@@ -5,7 +5,7 @@ from datetime import date, datetime
 import requests
 
 from acled.clients.acled_data_client import AcledDataClient
-from acled.models.enums import ExportType
+from acled.models.enums import ExportType, ResponseFormat
 from acled.exceptions import ApiError
 
 @pytest.fixture
@@ -68,7 +68,7 @@ class TestAcledDataClient:
         assert args[0] == "/acled/read"
         assert kwargs['params']['event_id_cnty'] == 'TEST123'
         assert kwargs['params']['limit'] == 10
-        assert kwargs['params']['export_type'] == ExportType.JSON
+        assert kwargs['params']['_format'] == 'json'
 
     def test_get_data_with_date_objects(self, client, mock_get_response):
         # Mock successful response
@@ -98,7 +98,7 @@ class TestAcledDataClient:
         assert kwargs['params']['event_date'] == datetime(2023, 1, 1, 0, 0).date()
         assert kwargs['params']['timestamp'] == datetime(2023, 1, 1, 0, 0).date()
 
-    def test_get_data_with_export_type_enum(self, client, mock_get_response):
+    def test_get_data_with_response_format_enum(self, client, mock_get_response):
         # Mock successful response
         mock_response = {
             'success': True,
@@ -106,12 +106,12 @@ class TestAcledDataClient:
         }
         mock_get_response.return_value = mock_response
 
-        # Call with ExportType enum
-        client.get_data(export_type=ExportType.CSV)
+        # Call with explicit ResponseFormat.JSON
+        client.get_data(response_format=ResponseFormat.JSON)
 
-        # Verify the API call
+        # Verify the API call sends _format=json
         args, kwargs = mock_get_response.call_args
-        assert kwargs['params']['export_type'] == ExportType.CSV
+        assert kwargs['params']['_format'] == 'json'
 
     def test_get_data_api_error(self, client, mock_get_response):
         # Mock error response
@@ -209,7 +209,7 @@ class TestAcledDataClient:
             notes="Test",
             fatalities=5,
             timestamp="2023-01-01",
-            export_type=ExportType.JSON,
+            response_format=ResponseFormat.JSON,
             limit=10,
             page=1
         )
@@ -247,6 +247,6 @@ class TestAcledDataClient:
         assert params['notes'] == 'Test'
         assert params['fatalities'] == 5
         assert params['timestamp'] == '2023-01-01'
-        assert params['export_type'] == ExportType.JSON
+        assert params['_format'] == 'json'
         assert params['limit'] == 10
         assert params['page'] == 1

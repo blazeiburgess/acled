@@ -6,7 +6,7 @@ error handling, and parameter processing. It serves as the foundation for all
 specialized client classes that interact with specific ACLED API endpoints.
 """
 
-from typing import Any, Dict, Optional, TypeVar
+from typing import Any, Dict, Optional, TypeVar, Union
 from os import environ
 import time
 import random
@@ -17,34 +17,108 @@ from requests.exceptions import RequestException, Timeout, ConnectionError, HTTP
 
 from acled.exceptions import (
     AcledMissingAuthError, ApiError, NetworkError, TimeoutError,
-    RetryError
+    RetryError, RateLimitError, ServerError, ClientError
 )
 from acled.log import AcledLogger
+from acled.auth import AuthMethod, AuthFactory, LegacyKeyEmailAuth
 
+import warnings
 
 T = TypeVar('T')
+
+_VALID_AUTH_METHODS = {'auto', 'oauth', 'cookie', 'legacy'}
+_SENSITIVE_KEYS = {'key', 'api_key', 'email', 'password', 'access_token', 'refresh_token'}
+
+
+def _redact_params(params):
+    """Return a copy of params with sensitive values replaced by '***'."""
+    if not isinstance(params, dict):
+        return params
+    return {k: ('***' if k in _SENSITIVE_KEYS else v) for k, v in params.items()}
+
+
+def _validate_auth_method_arg(auth_method):
+    """Detect legacy positional constructor usage and raise a helpful error."""
+    if (isinstance(auth_method, str)
+            and not isinstance(auth_method, AuthMethod)
+            and auth_method.lower() not in _VALID_AUTH_METHODS):
+        raise TypeError(
+            f"Unknown auth method '{auth_method}'. "
+            "The positional (api_key, email) constructor has been removed. "
+            "Use keyword arguments instead: "
+            "AcledClient(api_key='...', email='...') or "
+            "AcledClient(auth_method='legacy', api_key='...', email='...')"
+        )
+
+
+def _handle_legacy_positional_args(auth_method, auth_kwargs):
+    """Detect and handle legacy positional (api_key, email) constructor usage.
+
+    Returns:
+        (auth_method, auth_kwargs) — possibly rewritten for legacy auth, or
+        the original values if no legacy pattern was detected.
+    """
+    email = auth_kwargs.pop("_legacy_email", None)
+    if email is not None and auth_method is not None:
+        # Two positional args: AcledClient("api_key", "email@example.com")
+        warnings.warn(
+            "Positional (api_key, email) constructor is deprecated. "
+            "Use keyword arguments instead: "
+            "AcledClient(api_key='...', email='...')",
+            DeprecationWarning,
+            stacklevel=4
+        )
+        auth_kwargs["api_key"] = auth_method
+        auth_kwargs["email"] = email
+        return None, auth_kwargs
+    return auth_method, auth_kwargs
+
 
 class BaseHttpClient(object):
     """
     A base HTTP client that provides basic GET and POST request functionality.
     """
-    BASE_URL = environ.get("ACLED_API_HOST", "https://api.acleddata.com")
+    BASE_URL = environ.get("ACLED_API_HOST", "https://acleddata.com/api")
     # Default retry settings
     MAX_RETRIES = int(environ.get("ACLED_MAX_RETRIES", "3"))
     RETRY_BACKOFF_FACTOR = float(environ.get("ACLED_RETRY_BACKOFF_FACTOR", "0.5"))
     RETRY_STATUS_CODES = [429, 500, 502, 503, 504]  # Rate limit and server errors
     DEFAULT_TIMEOUT = int(environ.get("ACLED_REQUEST_TIMEOUT", "30"))  # seconds
 
-    def __init__(self, api_key: Optional[str] = None, email: Optional[str] = None):
-        self.api_key = api_key if api_key else environ.get("ACLED_API_KEY")
-        if not self.api_key:
-            raise AcledMissingAuthError("API key is required")
-        self.email = email if email else environ.get("ACLED_EMAIL")
-        if not self.email:
-            raise AcledMissingAuthError("Email is required")
+    def __init__(self, auth_method: Optional[Union[str, AuthMethod]] = None, _legacy_email: Optional[str] = None, **auth_kwargs):
+        """Initialize the base HTTP client with authentication.
+
+        Args:
+            auth_method: Authentication method (AuthMethod instance, method name, or None for auto)
+            _legacy_email: Deprecated positional email arg for backward compatibility
+            **auth_kwargs: Authentication parameters (username, password, api_key, email, etc.)
+        """
+        self.log = AcledLogger().get_logger()
+
+        auth_kwargs["_legacy_email"] = _legacy_email
+        auth_method, auth_kwargs = _handle_legacy_positional_args(auth_method, auth_kwargs)
+        _validate_auth_method_arg(auth_method)
+
+        # Simple auth handling - delegate all logic to AuthFactory
+        if isinstance(auth_method, AuthMethod):
+            self.auth = auth_method
+        elif auth_method:
+            self.auth = AuthFactory.create_auth(auth_method, **auth_kwargs)
+        elif auth_kwargs:
+            self.auth = AuthFactory.create_auth("auto", **auth_kwargs)
+        else:
+            self.auth = AuthFactory.from_environment()
+        
+        # Legacy attributes for backward compatibility
+        if isinstance(self.auth, LegacyKeyEmailAuth):
+            self.api_key = self.auth.api_key
+            self.email = self.auth.email
+        else:
+            self.api_key = None
+            self.email = None
+        
         self.session = requests.Session()
         self.session.headers.update({'Content-Type': 'application/json'})
-        self.log = AcledLogger().get_logger()
 
     def process_params(self, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -57,10 +131,6 @@ class BaseHttpClient(object):
             Processed parameters dictionary
         """
         processed_params = params.copy() if params else {}
-
-        # Include API key and email in all requests
-        processed_params['key'] = self.api_key
-        processed_params['email'] = self.email
 
         # Process parameters to handle different types
         for key, value in list(processed_params.items()):
@@ -76,6 +146,9 @@ class BaseHttpClient(object):
             elif hasattr(value, 'value'):
                 # Handle enum types
                 processed_params[key] = value.value
+
+        # Apply authentication to parameters
+        processed_params = self.auth.authenticate(self.session, processed_params)
 
         return processed_params
 
@@ -111,18 +184,26 @@ class BaseHttpClient(object):
         """
         url = f"{self.BASE_URL}{endpoint}"
         timeout = timeout or self.DEFAULT_TIMEOUT
+        
+        # Refresh authentication if needed (non-fatal — will retry via 401 path)
+        try:
+            self.auth.refresh_if_needed(self.session)
+        except Exception as e:
+            self.log.warning("Pre-request auth refresh failed: %s", str(e))
+        
         processed_params = self.process_params(params) if method.lower() == 'get' else None
         processed_data = self.process_params(data) if method.lower() == 'post' else None
 
         # Log request details
         self.log.info("Making %s request to %s", method.upper(), endpoint)
         if processed_params:
-            self.log.debug("Query Parameters: %s", processed_params)
+            self.log.debug("Query Parameters: %s", _redact_params(processed_params))
         if processed_data:
-            self.log.debug("Request Data: %s", processed_data)
+            self.log.debug("Request Data: %s", _redact_params(processed_data))
 
         retries = 0
         last_exception = None
+        auth_refreshed = False
 
         while retries <= self.MAX_RETRIES:
             try:
@@ -148,9 +229,30 @@ class BaseHttpClient(object):
 
                 # Check for rate limiting
                 if response.status_code == 429:
+                    if retries >= self.MAX_RETRIES:
+                        raise RateLimitError(
+                            f"Rate limited after {self.MAX_RETRIES} retries"
+                        )
                     retry_after = int(response.headers.get('Retry-After', 60))
                     self.log.warning("Rate limited. Retry after %ss", retry_after)
                     time.sleep(retry_after)
+                    retries += 1
+                    continue
+
+                # Handle auth errors with token refresh (once)
+                if response.status_code in (401, 403) and not auth_refreshed:
+                    self.log.warning(
+                        "Auth error (%s), refreshing credentials and retrying",
+                        response.status_code
+                    )
+                    try:
+                        self.auth.force_refresh(self.session)
+                        processed_params = self.process_params(params) if method.lower() == 'get' else None
+                        processed_data = self.process_params(data) if method.lower() == 'post' else None
+                    except Exception as e:
+                        self.log.warning("Auth refresh failed: %s", str(e))
+                        last_exception = ApiError(f"Auth refresh failed: {str(e)}")
+                    auth_refreshed = True
                     retries += 1
                     continue
 
@@ -172,7 +274,12 @@ class BaseHttpClient(object):
             except HTTPError as e:
                 status_code = getattr(getattr(e, "response", None), "status_code", None)
                 self.log.error("HTTP error: %s (status code: %s)", str(e), status_code)
-                raise
+                if status_code and 500 <= status_code < 600:
+                    last_exception = ServerError(f"Server error ({status_code}): {str(e)}")
+                elif status_code and 400 <= status_code < 500:
+                    raise ClientError(f"Client error ({status_code}): {str(e)}") from e
+                else:
+                    raise ApiError(f"HTTP error ({status_code}): {str(e)}") from e
             except RequestException as e:
                 self.log.error("Request error: %s", str(e))
                 last_exception = ApiError(f"Request error: {str(e)}")

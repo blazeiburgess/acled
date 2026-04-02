@@ -28,16 +28,19 @@ class DisorderType(Enum):
     STRATEGIC_DEVELOPMENTS = "Strategic developments"
 
 
-class ExportType(Enum):
-    """Enumeration for data export formats.
+class ResponseFormat(Enum):
+    """Enumeration for API response formats.
 
-    Defines the available formats for exporting ACLED data.
+    The library only supports JSON responses because all endpoint clients
+    expect a JSON envelope with 'success' and 'data' fields. Users who need
+    CSV/XML can use query_params={'_format': 'csv'} and handle raw responses
+    via the base client directly.
     """
     JSON = "json"
-    XML = "xml"
-    CSV = "csv"
-    XLSX = "xlsx"
-    TXT = "txt"
+
+
+# Deprecated alias — use ResponseFormat instead
+ExportType = ResponseFormat
 
 class Actor(Enum):
     """

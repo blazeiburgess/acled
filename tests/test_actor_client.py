@@ -5,7 +5,7 @@ from datetime import date, datetime
 import requests
 
 from acled.clients.actor_client import ActorClient
-from acled.models.enums import ExportType
+from acled.models.enums import ExportType, ResponseFormat
 from acled.exceptions import ApiError
 
 @pytest.fixture
@@ -60,7 +60,7 @@ class TestActorClient:
         assert args[0] == "/actor/read"
         assert kwargs['params']['actor_name'] == 'Test Actor'
         assert kwargs['params']['limit'] == 10
-        assert kwargs['params']['export_type'] == ExportType.JSON
+        assert kwargs['params']['_format'] == 'json'
 
     def test_get_data_with_date_objects(self, client, mock_get_response):
         # Mock successful response
@@ -87,7 +87,7 @@ class TestActorClient:
         assert kwargs['params']['first_event_date'] == date(2023, 1, 1)
         assert kwargs['params']['last_event_date'] == date(2023, 1, 31)
 
-    def test_get_data_with_export_type_enum(self, client, mock_get_response):
+    def test_get_data_with_response_format_enum(self, client, mock_get_response):
         # Mock successful response
         mock_response = {
             'success': True,
@@ -95,12 +95,12 @@ class TestActorClient:
         }
         mock_get_response.return_value = mock_response
 
-        # Call with ExportType enum
-        client.get_data(export_type=ExportType.CSV)
+        # Call with explicit ResponseFormat.JSON
+        client.get_data(response_format=ResponseFormat.JSON)
 
-        # Verify the API call
+        # Verify the API call sends _format=json
         args, kwargs = mock_get_response.call_args
-        assert kwargs['params']['export_type'] == ExportType.CSV
+        assert kwargs['params']['_format'] == 'json'
 
     def test_get_data_api_error(self, client, mock_get_response):
         # Mock error response
@@ -164,7 +164,7 @@ class TestActorClient:
             first_event_date="2023-01-01",
             last_event_date="2023-01-31",
             event_count=10,
-            export_type=ExportType.JSON,
+            response_format=ResponseFormat.JSON,
             limit=10,
             page=1,
             query_params={"additional_param": "value"}
@@ -177,7 +177,7 @@ class TestActorClient:
         assert params['first_event_date'] == '2023-01-01'
         assert params['last_event_date'] == '2023-01-31'
         assert params['event_count'] == 10
-        assert params['export_type'] == ExportType.JSON
+        assert params['_format'] == 'json'
         assert params['limit'] == 10
         assert params['page'] == 1
         assert params['additional_param'] == 'value'

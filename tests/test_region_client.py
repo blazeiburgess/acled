@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from datetime import date
 from acled.clients.region_client import RegionClient
-from acled.models.enums import ExportType
+from acled.models.enums import ExportType, ResponseFormat
 from acled.exceptions import ApiError
 
 def test_region_client_initialization():
@@ -143,8 +143,8 @@ def test_get_data_with_event_count():
         args, kwargs = mock_get.call_args
         assert kwargs['params']['event_count'] == '100'
 
-def test_get_data_with_export_type():
-    """Test that get_data correctly sets the export_type."""
+def test_get_data_with_response_format():
+    """Test that get_data correctly sets the response_format."""
     with patch('acled.clients.region_client.RegionClient._get') as mock_get:
         mock_get.return_value = {
             'success': True,
@@ -158,29 +158,29 @@ def test_get_data_with_export_type():
                 }
             ]
         }
-        
+
         client = RegionClient(api_key="test_key", email="test@example.com")
-        
-        # Test with ExportType enum
-        result = client.get_data(export_type=ExportType.JSON)
-        
+
+        # Test with ResponseFormat enum
+        result = client.get_data(response_format=ResponseFormat.JSON)
+
         assert len(result) == 1
-        
+
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
-        assert kwargs['params']['export_type'] == 'json'
-        
+        assert kwargs['params']['_format'] == 'json'
+
         # Reset mock for next test
         mock_get.reset_mock()
-        
+
         # Test with string
-        result = client.get_data(export_type='csv')
-        
+        result = client.get_data(response_format='json')
+
         assert len(result) == 1
-        
+
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
-        assert kwargs['params']['export_type'] == 'csv'
+        assert kwargs['params']['_format'] == 'json'
 
 def test_get_data_with_pagination():
     """Test that get_data correctly handles pagination parameters."""

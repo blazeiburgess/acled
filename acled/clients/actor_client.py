@@ -10,7 +10,7 @@ from datetime import datetime, date
 
 from acled.clients.base_http_client import BaseHttpClient
 from acled.models import Actor
-from acled.models.enums import ExportType
+from acled.models.enums import ResponseFormat, ExportType
 from acled.exceptions import ApiError, NetworkError, TimeoutError, RateLimitError, RetryError, ServerError, ClientError
 
 
@@ -19,8 +19,13 @@ class ActorClient(BaseHttpClient):
     Client for interacting with the ACLED actor endpoint.
     """
 
-    def __init__(self, api_key: str, email: str):
-        super().__init__(api_key, email)
+    def __init__(self, **kwargs):
+        """Initialize the actor client.
+        
+        Args:
+            **kwargs: Authentication parameters passed to BaseHttpClient
+        """
+        super().__init__(**kwargs)
         self.endpoint = "/actor/read"
 
     def get_data(
@@ -29,7 +34,7 @@ class ActorClient(BaseHttpClient):
         first_event_date: Optional[Union[str, date]] = None,
         last_event_date: Optional[Union[str, date]] = None,
         event_count: Optional[int] = None,
-        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        response_format: Optional[Union[str, ResponseFormat]] = ResponseFormat.JSON,
         limit: int = 50,
         page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
@@ -65,13 +70,19 @@ class ActorClient(BaseHttpClient):
             'first_event_date': first_event_date,
             'last_event_date': last_event_date,
             'event_count': event_count,
-            'export_type': export_type,
             'limit': limit,
             'page': page
         }
 
         # Remove None values
         params = {k: v for k, v in params.items() if v is not None}
+
+        # Map response_format to _format (the actual API parameter)
+        if response_format is not None:
+            if isinstance(response_format, ResponseFormat):
+                params['_format'] = response_format.value
+            else:
+                params['_format'] = response_format
 
         # Add any additional query parameters
         if query_params:
@@ -114,12 +125,17 @@ class ActorClient(BaseHttpClient):
             ValueError: If there's an error during parsing.
         """
         try:
-            actor_data['first_event_date'] = datetime.strptime(
-                actor_data['first_event_date'], '%Y-%m-%d'
-            ).date()
-            actor_data['last_event_date'] = datetime.strptime(
-                actor_data['last_event_date'], '%Y-%m-%d'
-            ).date()
+            # Parse first_event_date if it's a string
+            if isinstance(actor_data.get('first_event_date'), str):
+                actor_data['first_event_date'] = datetime.strptime(
+                    actor_data['first_event_date'], '%Y-%m-%d'
+                ).date()
+
+            # Parse last_event_date if it's a string
+            if isinstance(actor_data.get('last_event_date'), str):
+                actor_data['last_event_date'] = datetime.strptime(
+                    actor_data['last_event_date'], '%Y-%m-%d'
+                ).date()
             actor_data['event_count'] = int(actor_data.get('event_count', 0))
 
             return actor_data

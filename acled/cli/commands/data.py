@@ -4,7 +4,6 @@ import argparse
 from typing import Optional
 
 from acled.cli.commands.base import BaseCommand
-from acled.models.enums import ExportType
 
 
 class DataCommand(BaseCommand):
@@ -23,7 +22,7 @@ Examples:
   # Get recent events from Syria
   acled data --country Syria --year 2024
 
-  # Get violent events with high fatalities
+  # Get violent events with fatalities
   acled data --event-type "Violence against civilians" --fatalities 10
 
   # Get events in a specific region with date range
@@ -73,7 +72,7 @@ Examples:
         event_group.add_argument(
             '--fatalities',
             type=int,
-            help='Filter by minimum number of fatalities'
+            help='Filter by exact number of fatalities'
         )
 
         # Add common options
@@ -81,7 +80,7 @@ Examples:
             '--limit',
             type=int,
             default=50,
-            help='Number of records to retrieve (default: 50)'
+            help='Number of records to retrieve (default: 50; API default is 5000)'
         )
         parser.add_argument(
             '--page',
@@ -90,9 +89,8 @@ Examples:
         )
         parser.add_argument(
             '--export-type',
-            choices=['json', 'xml', 'csv'],
-            default='json',
-            help='API export type (default: json)'
+            choices=['dyadic', 'monadic'],
+            help='Data structure format (dyadic or monadic, ACLED endpoint only)'
         )
 
     def execute(self, args: argparse.Namespace) -> int:
@@ -103,29 +101,32 @@ Examples:
         # Location parameters
         if args.country:
             params['country'] = args.country
-        if args.region:
+        if args.region is not None:
             params['region'] = args.region
-        if args.iso:
+        if args.iso is not None:
             params['iso'] = args.iso
 
         # Time parameters
-        if args.year:
+        if args.year is not None:
             params['year'] = args.year
-        if args.start_date:
+        if args.start_date and args.end_date:
+            params['event_date'] = f"{args.start_date}|{args.end_date}"
+            params['query_params'] = {'event_date_where': 'BETWEEN'}
+        elif args.start_date:
             params['event_date'] = args.start_date
 
         # Event parameters
         if args.event_type:
             params['event_type'] = args.event_type
-        if args.fatalities:
+        if args.fatalities is not None:
             params['fatalities'] = args.fatalities
 
         # Common parameters
         params['limit'] = args.limit
-        if args.page:
+        if args.page is not None:
             params['page'] = args.page
         if hasattr(args, 'export_type') and args.export_type:
-            params['export_type'] = ExportType(args.export_type)
+            params['export_type'] = args.export_type
 
         # Execute query
         if not self.config.quiet:

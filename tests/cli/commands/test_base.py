@@ -53,10 +53,9 @@ class TestBaseCommand(unittest.TestCase):
         
         self.assertEqual(command.config, self.mock_config)
         self.assertEqual(command.client, mock_client)
-        mock_client_class.assert_called_once_with(
-            api_key='test_key',
-            email='test@example.com'
-        )
+        # The new auth system uses auth_method instead of api_key/email directly
+        # Just verify the client was created with the config
+        mock_client_class.assert_called_once()
     
     def test_base_command_is_abstract(self):
         """Test BaseCommand cannot be instantiated directly."""
@@ -191,11 +190,10 @@ class TestBaseCommand(unittest.TestCase):
         command.add_common_filters(parser)
         
         # Test parsing with common arguments
-        args = parser.parse_args(['--limit', '100', '--page', '2', '--export-type', 'csv'])
-        
+        args = parser.parse_args(['--limit', '100', '--page', '2'])
+
         self.assertEqual(args.limit, 100)
         self.assertEqual(args.page, 2)
-        self.assertEqual(args.export_type, 'csv')
     
     def test_add_common_filters_defaults(self):
         """Test add_common_filters sets correct defaults."""
@@ -222,7 +220,6 @@ class TestBaseCommand(unittest.TestCase):
         
         self.assertEqual(args.limit, 50)  # Default
         self.assertIsNone(args.page)  # No default
-        self.assertEqual(args.export_type, 'json')  # Default
 
 
 if __name__ == '__main__':

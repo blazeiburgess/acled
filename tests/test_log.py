@@ -110,15 +110,25 @@ def test_log_formatter(reset_logger):
 def test_logger_thread_safety(reset_logger):
     import threading
 
+    errors = []
+
     def worker():
-        logger = AcledLogger().get_logger()
-        assert threading.current_thread().name in logger.handlers[0].formatter._fmt
+        try:
+            logger = AcledLogger().get_logger()
+            fmt = logger.handlers[0].formatter._fmt
+            # The format string should include threadName template
+            if '%(threadName)s' not in fmt:
+                errors.append(f"threadName template not in format: {fmt}")
+        except Exception as e:
+            errors.append(str(e))
 
     threads = [threading.Thread(target=worker) for _ in range(5)]
     for thread in threads:
         thread.start()
     for thread in threads:
         thread.join()
+
+    assert not errors, f"Thread safety errors: {errors}"
 
 
 if __name__ == "__main__":

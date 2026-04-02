@@ -11,7 +11,7 @@ from datetime import datetime, date
 
 from acled.clients.base_http_client import BaseHttpClient
 from acled.models import ActorType
-from acled.models.enums import ExportType
+from acled.models.enums import ResponseFormat, ExportType
 from acled.exceptions import ApiError
 
 class ActorTypeClient(BaseHttpClient):
@@ -19,8 +19,13 @@ class ActorTypeClient(BaseHttpClient):
     Client for interacting with the ACLED actor type endpoint.
     """
 
-    def __init__(self, api_key: str, email: str):
-        super().__init__(api_key, email)
+    def __init__(self, **kwargs):
+        """Initialize the actor type client.
+        
+        Args:
+            **kwargs: Authentication parameters passed to BaseHttpClient
+        """
+        super().__init__(**kwargs)
         self.endpoint = "/actortype/read"
 
     def get_data(
@@ -30,7 +35,7 @@ class ActorTypeClient(BaseHttpClient):
         first_event_date: Optional[Union[str, date]] = None,
         last_event_date: Optional[Union[str, date]] = None,
         event_count: Optional[int] = None,
-        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        response_format: Optional[Union[str, ResponseFormat]] = ResponseFormat.JSON,
         limit: int = 50,
         page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
@@ -74,11 +79,11 @@ class ActorTypeClient(BaseHttpClient):
                 params['last_event_date'] = last_event_date
         if event_count is not None:
             params['event_count'] = str(event_count)
-        if export_type is not None:
-            if isinstance(export_type, ExportType):
-                params['export_type'] = export_type.value
+        if response_format is not None:
+            if isinstance(response_format, ResponseFormat):
+                params['_format'] = response_format.value
             else:
-                params['export_type'] = export_type
+                params['_format'] = response_format
         params['limit'] = str(limit) if limit else '50'
         if page is not None:
             params['page'] = str(page)
@@ -112,13 +117,13 @@ class ActorTypeClient(BaseHttpClient):
             actor_type_data['actor_type_id'] = int(actor_type_data.get('actor_type_id', 0))
 
             # Parse first_event_date if it's a string
-            if isinstance(actor_type_data['first_event_date'], str):
+            if isinstance(actor_type_data.get('first_event_date'), str):
                 actor_type_data['first_event_date'] = datetime.strptime(
                     actor_type_data['first_event_date'], '%Y-%m-%d'
                 ).date()
 
             # Parse last_event_date if it's a string
-            if isinstance(actor_type_data['last_event_date'], str):
+            if isinstance(actor_type_data.get('last_event_date'), str):
                 actor_type_data['last_event_date'] = datetime.strptime(
                     actor_type_data['last_event_date'], '%Y-%m-%d'
                 ).date()

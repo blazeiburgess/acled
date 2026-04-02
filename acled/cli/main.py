@@ -26,7 +26,7 @@ Examples:
   acled data --country Syria --year 2024 --limit 10
 
   # Get data with table output
-  acled data --country Nigeria --format table
+  acled --format table data --country Nigeria
 
   # Get help for a specific command
   acled data --help
@@ -118,9 +118,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     except AcledMissingAuthError as e:
         print(f"Error: {e}", file=sys.stderr)
         print("\nPlease authenticate using one of these methods:", file=sys.stderr)
-        print("  1. acled auth login  (recommended - secure storage)", file=sys.stderr)
-        print("  2. --api-key and --email options", file=sys.stderr)
-        print("  3. ACLED_API_KEY and ACLED_EMAIL environment variables", file=sys.stderr)
+        print("\nOption 1: Secure credential storage (recommended)", file=sys.stderr)
+        print("  # For legacy API key authentication:", file=sys.stderr)
+        print("  acled auth login --method legacy", file=sys.stderr)
+        print("\n  # For OAuth authentication:", file=sys.stderr)
+        print("  acled auth login --method oauth", file=sys.stderr)
+        print("\nOption 2: Command-line options", file=sys.stderr)
+        print("  acled data --api-key YOUR_KEY --email your@email.com", file=sys.stderr)
+        print("\nOption 3: Environment variables", file=sys.stderr)
+        print("  # For legacy auth:", file=sys.stderr)
+        print("  export ACLED_API_KEY=your_key", file=sys.stderr)
+        print("  export ACLED_EMAIL=your@email.com", file=sys.stderr)
+        print("\n  # For OAuth:", file=sys.stderr)
+        print("  export ACLED_USERNAME=your_username", file=sys.stderr)
+        print("  export ACLED_PASSWORD=your_password", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         print("\nOperation cancelled by user", file=sys.stderr)

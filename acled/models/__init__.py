@@ -4,5 +4,5 @@ This package provides data models and enumerations for representing ACLED data,
 including events, actors, regions, countries, and various classification types.
 """
 
-from acled.models.data_models import AcledEvent, Actor, ActorType, Region, Country
-from acled.models.enums import TimePrecision, DisorderType
+from acled.models.data_models import AcledEvent, Actor, ActorType, CastForecast, DeletedEvent, Region, Country
+from acled.models.enums import TimePrecision, DisorderType, ResponseFormat, ExportType

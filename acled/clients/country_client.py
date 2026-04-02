@@ -11,7 +11,7 @@ import requests
 
 from acled.clients.base_http_client import BaseHttpClient
 from acled.models import Country
-from acled.models.enums import ExportType
+from acled.models.enums import ResponseFormat, ExportType
 from acled.exceptions import ApiError
 
 class CountryClient(BaseHttpClient):
@@ -19,8 +19,13 @@ class CountryClient(BaseHttpClient):
     Client for interacting with the ACLED country endpoint.
     """
 
-    def __init__(self, api_key: str, email: str):
-        super().__init__(api_key, email)
+    def __init__(self, **kwargs):
+        """Initialize the country client.
+        
+        Args:
+            **kwargs: Authentication parameters passed to BaseHttpClient
+        """
+        super().__init__(**kwargs)
         self.endpoint = "/country/read"
 
     def get_data(
@@ -31,7 +36,7 @@ class CountryClient(BaseHttpClient):
         first_event_date: Optional[Union[str, date]] = None,
         last_event_date: Optional[Union[str, date]] = None,
         event_count: Optional[int] = None,
-        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        response_format: Optional[Union[str, ResponseFormat]] = ResponseFormat.JSON,
         limit: int = 50,
         page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
@@ -78,11 +83,11 @@ class CountryClient(BaseHttpClient):
                 params['last_event_date'] = last_event_date
         if event_count is not None:
             params['event_count'] = str(event_count)
-        if export_type is not None:
-            if isinstance(export_type, ExportType):
-                params['export_type'] = export_type.value
+        if response_format is not None:
+            if isinstance(response_format, ResponseFormat):
+                params['_format'] = response_format.value
             else:
-                params['export_type'] = export_type
+                params['_format'] = response_format
         params['limit'] = str(limit) if limit else '50'
         if page is not None:
             params['page'] = str(page)
@@ -115,17 +120,22 @@ class CountryClient(BaseHttpClient):
         """
         try:
             # Parse first_event_date if it's a string
-            if isinstance(country_data['first_event_date'], str):
+            if isinstance(country_data.get('first_event_date'), str):
                 country_data['first_event_date'] = datetime.strptime(
                     country_data['first_event_date'], '%Y-%m-%d'
                 ).date()
 
             # Parse last_event_date if it's a string
-            if isinstance(country_data['last_event_date'], str):
+            if isinstance(country_data.get('last_event_date'), str):
                 country_data['last_event_date'] = datetime.strptime(
                     country_data['last_event_date'], '%Y-%m-%d'
                 ).date()
-            country_data['iso'] = int(country_data.get('iso', 0))
+            iso_val = country_data.get('iso')
+            if iso_val is not None:
+                try:
+                    country_data['iso'] = int(iso_val)
+                except (ValueError, TypeError):
+                    pass  # Keep as-is if not numeric (e.g. ISO alpha-2 codes)
             country_data['event_count'] = int(country_data.get('event_count', 0))
 
             return country_data  # This will be of type Country

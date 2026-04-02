@@ -12,7 +12,7 @@ import requests
 
 from acled.clients.base_http_client import BaseHttpClient
 from acled.models import Region
-from acled.models.enums import ExportType
+from acled.models.enums import ResponseFormat, ExportType
 from acled.exceptions import ApiError
 
 class RegionClient(BaseHttpClient):
@@ -20,8 +20,13 @@ class RegionClient(BaseHttpClient):
     Client for interacting with the ACLED region endpoint.
     """
 
-    def __init__(self, api_key: str, email: str):
-        super().__init__(api_key, email)
+    def __init__(self, **kwargs):
+        """Initialize the region client.
+        
+        Args:
+            **kwargs: Authentication parameters passed to BaseHttpClient
+        """
+        super().__init__(**kwargs)
         self.endpoint = "/region/read"
 
     def get_data(
@@ -31,7 +36,7 @@ class RegionClient(BaseHttpClient):
         first_event_date: Optional[Union[str, date]] = None,
         last_event_date: Optional[Union[str, date]] = None,
         event_count: Optional[int] = None,
-        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        response_format: Optional[Union[str, ResponseFormat]] = ResponseFormat.JSON,
         limit: int = 50,
         page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
@@ -75,11 +80,11 @@ class RegionClient(BaseHttpClient):
                 params['last_event_date'] = last_event_date
         if event_count is not None:
             params['event_count'] = str(event_count)
-        if export_type is not None:
-            if isinstance(export_type, ExportType):
-                params['export_type'] = export_type.value
+        if response_format is not None:
+            if isinstance(response_format, ResponseFormat):
+                params['_format'] = response_format.value
             else:
-                params['export_type'] = export_type
+                params['_format'] = response_format
         params['limit'] = str(limit) if limit else '50'
         if page is not None:
             params['page'] = str(page)
@@ -113,13 +118,13 @@ class RegionClient(BaseHttpClient):
             region_data['region'] = int(region_data.get('region', 0))
 
             # Parse first_event_date if it's a string
-            if isinstance(region_data['first_event_date'], str):
+            if isinstance(region_data.get('first_event_date'), str):
                 region_data['first_event_date'] = datetime.strptime(
                     region_data['first_event_date'], '%Y-%m-%d'
                 ).date()
 
             # Parse last_event_date if it's a string
-            if isinstance(region_data['last_event_date'], str):
+            if isinstance(region_data.get('last_event_date'), str):
                 region_data['last_event_date'] = datetime.strptime(
                     region_data['last_event_date'], '%Y-%m-%d'
                 ).date()
