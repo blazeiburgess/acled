@@ -132,22 +132,32 @@ def test_post_request_without_data(mock_environ, mock_requests_session, mock_log
     mock_response.raise_for_status.assert_called_once()
     assert result == {'data': 'test'}
 
-def test_get_request_raises_exception(mock_environ, mock_requests_session, mock_logger):
+def test_get_request_raises_client_error(mock_environ, mock_requests_session, mock_logger):
+    from acled.exceptions import ClientError
     client = BaseHttpClient()
     mock_response = MagicMock()
-    mock_response.raise_for_status.side_effect = requests.HTTPError("404 Client Error")
+    mock_response.status_code = 404
+    mock_response.content = b'Not found'
+    http_error = requests.HTTPError("404 Client Error")
+    http_error.response = mock_response
+    mock_response.raise_for_status.side_effect = http_error
     mock_requests_session.get.return_value = mock_response
 
-    with pytest.raises(requests.HTTPError):
+    with pytest.raises(ClientError):
         client._get('/test')
 
-def test_post_request_raises_exception(mock_environ, mock_requests_session, mock_logger):
+def test_post_request_raises_server_error(mock_environ, mock_requests_session, mock_logger):
+    from acled.exceptions import RetryError
     client = BaseHttpClient()
     mock_response = MagicMock()
-    mock_response.raise_for_status.side_effect = requests.HTTPError("500 Server Error")
+    mock_response.status_code = 500
+    mock_response.content = b'Server error'
+    http_error = requests.HTTPError("500 Server Error")
+    http_error.response = mock_response
+    mock_response.raise_for_status.side_effect = http_error
     mock_requests_session.post.return_value = mock_response
 
-    with pytest.raises(requests.HTTPError):
+    with pytest.raises(RetryError):
         client._post('/test')
 
 def test_base_url_default(mock_requests_session, mock_logger):
@@ -192,17 +202,20 @@ def test_401_triggers_token_refresh_and_retry(mock_environ, mock_requests_sessio
 
 
 def test_401_twice_raises_after_refresh(mock_environ, mock_requests_session, mock_logger):
+    from acled.exceptions import ClientError
     client = BaseHttpClient()
 
     # Both responses return 401
     mock_response_401 = MagicMock()
     mock_response_401.status_code = 401
-    mock_response_401.raise_for_status.side_effect = requests.HTTPError("401 Unauthorized")
+    http_error = requests.HTTPError("401 Unauthorized")
+    http_error.response = mock_response_401
+    mock_response_401.raise_for_status.side_effect = http_error
 
     mock_requests_session.get.return_value = mock_response_401
 
     with patch.object(client.auth, 'force_refresh'):
-        with pytest.raises(requests.HTTPError):
+        with pytest.raises(ClientError):
             client._get('/test')
 
 
@@ -230,21 +243,23 @@ def test_legacy_two_positional_args_backward_compat(mock_environ, mock_requests_
 
 def test_force_refresh_failure_is_retryable(mock_environ, mock_requests_session, mock_logger):
     """Test that force_refresh() failure doesn't immediately abort the request."""
-    from acled.exceptions import ApiError, RetryError
+    from acled.exceptions import ApiError, RetryError, ClientError
 
     client = BaseHttpClient()
 
     # All responses return 401
     mock_response_401 = MagicMock()
     mock_response_401.status_code = 401
-    mock_response_401.raise_for_status.side_effect = requests.HTTPError("401 Unauthorized")
+    http_error = requests.HTTPError("401 Unauthorized")
+    http_error.response = mock_response_401
+    mock_response_401.raise_for_status.side_effect = http_error
 
     mock_requests_session.get.return_value = mock_response_401
 
     mock_force_refresh = MagicMock(side_effect=ApiError("Token endpoint down"))
     with patch.object(client.auth, 'force_refresh', mock_force_refresh):
-        # Should exhaust retries rather than raising ApiError immediately
-        with pytest.raises((requests.HTTPError, RetryError)):
+        # Should raise ClientError since 401 is a 4xx error
+        with pytest.raises(ClientError):
             client._get('/test')
 
     # force_refresh was called (once, since auth_refreshed gets set)
