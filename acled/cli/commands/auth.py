@@ -349,10 +349,13 @@ Examples:
             The auth method that succeeded ('oauth' or 'cookie'), or None on failure.
         """
         try:
-            # Try OAuth first
-            auth = OAuthTokenAuth(username=username, password=password)
+            # Try OAuth first, with token caching
+            token_file = self.credential_manager.get_token_file()
+            auth = OAuthTokenAuth(username=username, password=password, token_file=token_file)
             client = AcledClient(auth_method=auth)
             client.get_data(limit=1)
+            # Save tokens now that we know they work
+            auth.save_tokens(token_file)
             return 'oauth'
         except Exception:
             # If OAuth fails, try cookie
