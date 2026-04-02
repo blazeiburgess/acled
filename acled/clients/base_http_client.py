@@ -17,7 +17,7 @@ from requests.exceptions import RequestException, Timeout, ConnectionError, HTTP
 
 from acled.exceptions import (
     AcledMissingAuthError, ApiError, NetworkError, TimeoutError,
-    RetryError
+    RetryError, RateLimitError, ServerError, ClientError
 )
 from acled.log import AcledLogger
 from acled.auth import AuthMethod, AuthFactory, LegacyKeyEmailAuth
@@ -27,6 +27,14 @@ import warnings
 T = TypeVar('T')
 
 _VALID_AUTH_METHODS = {'auto', 'oauth', 'cookie', 'legacy'}
+_SENSITIVE_KEYS = {'key', 'api_key', 'email', 'password', 'access_token', 'refresh_token'}
+
+
+def _redact_params(params):
+    """Return a copy of params with sensitive values replaced by '***'."""
+    if not isinstance(params, dict):
+        return params
+    return {k: ('***' if k in _SENSITIVE_KEYS else v) for k, v in params.items()}
 
 
 def _validate_auth_method_arg(auth_method):
@@ -189,9 +197,9 @@ class BaseHttpClient(object):
         # Log request details
         self.log.info("Making %s request to %s", method.upper(), endpoint)
         if processed_params:
-            self.log.debug("Query Parameters: %s", processed_params)
+            self.log.debug("Query Parameters: %s", _redact_params(processed_params))
         if processed_data:
-            self.log.debug("Request Data: %s", processed_data)
+            self.log.debug("Request Data: %s", _redact_params(processed_data))
 
         retries = 0
         last_exception = None
@@ -221,6 +229,10 @@ class BaseHttpClient(object):
 
                 # Check for rate limiting
                 if response.status_code == 429:
+                    if retries >= self.MAX_RETRIES:
+                        raise RateLimitError(
+                            f"Rate limited after {self.MAX_RETRIES} retries"
+                        )
                     retry_after = int(response.headers.get('Retry-After', 60))
                     self.log.warning("Rate limited. Retry after %ss", retry_after)
                     time.sleep(retry_after)
@@ -262,7 +274,12 @@ class BaseHttpClient(object):
             except HTTPError as e:
                 status_code = getattr(getattr(e, "response", None), "status_code", None)
                 self.log.error("HTTP error: %s (status code: %s)", str(e), status_code)
-                raise
+                if status_code and 500 <= status_code < 600:
+                    last_exception = ServerError(f"Server error ({status_code}): {str(e)}")
+                elif status_code and 400 <= status_code < 500:
+                    raise ClientError(f"Client error ({status_code}): {str(e)}") from e
+                else:
+                    raise ApiError(f"HTTP error ({status_code}): {str(e)}") from e
             except RequestException as e:
                 self.log.error("Request error: %s", str(e))
                 last_exception = ApiError(f"Request error: {str(e)}")
