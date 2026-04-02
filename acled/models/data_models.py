@@ -106,6 +106,16 @@ class CastForecast(TypedDict, total=False):
     timestamp: int
 
 
+class DeletedEvent(TypedDict, total=False):
+    """TypedDict representing a deleted event record from the ACLED database.
+
+    Contains the identifier of an event that has been removed from the dataset,
+    along with the timestamp of its deletion.
+    """
+    event_id_cnty: str
+    deleted_timestamp: int
+
+
 class ActorType(TypedDict, total=False):
     """TypedDict representing a type of actor in the ACLED database.
 
