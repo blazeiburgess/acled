@@ -35,7 +35,7 @@ class ActorTypeClient(BaseHttpClient):
         first_event_date: Optional[Union[str, date]] = None,
         last_event_date: Optional[Union[str, date]] = None,
         event_count: Optional[int] = None,
-        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        response_format: Optional[Union[str, ResponseFormat]] = ResponseFormat.JSON,
         limit: int = 50,
         page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
