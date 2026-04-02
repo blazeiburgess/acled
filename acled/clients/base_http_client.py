@@ -22,6 +22,7 @@ from acled.exceptions import (
 from acled.log import AcledLogger
 from acled.auth import AuthMethod, AuthFactory, LegacyKeyEmailAuth
 
+import warnings
 
 T = TypeVar('T')
 
@@ -42,6 +43,29 @@ def _validate_auth_method_arg(auth_method):
         )
 
 
+def _handle_legacy_positional_args(auth_method, auth_kwargs):
+    """Detect and handle legacy positional (api_key, email) constructor usage.
+
+    Returns:
+        (auth_method, auth_kwargs) — possibly rewritten for legacy auth, or
+        the original values if no legacy pattern was detected.
+    """
+    email = auth_kwargs.pop("_legacy_email", None)
+    if email is not None and auth_method is not None:
+        # Two positional args: AcledClient("api_key", "email@example.com")
+        warnings.warn(
+            "Positional (api_key, email) constructor is deprecated. "
+            "Use keyword arguments instead: "
+            "AcledClient(api_key='...', email='...')",
+            DeprecationWarning,
+            stacklevel=4
+        )
+        auth_kwargs["api_key"] = auth_method
+        auth_kwargs["email"] = email
+        return None, auth_kwargs
+    return auth_method, auth_kwargs
+
+
 class BaseHttpClient(object):
     """
     A base HTTP client that provides basic GET and POST request functionality.
@@ -53,15 +77,18 @@ class BaseHttpClient(object):
     RETRY_STATUS_CODES = [429, 500, 502, 503, 504]  # Rate limit and server errors
     DEFAULT_TIMEOUT = int(environ.get("ACLED_REQUEST_TIMEOUT", "30"))  # seconds
 
-    def __init__(self, auth_method: Optional[Union[str, AuthMethod]] = None, **auth_kwargs):
+    def __init__(self, auth_method: Optional[Union[str, AuthMethod]] = None, _legacy_email: Optional[str] = None, **auth_kwargs):
         """Initialize the base HTTP client with authentication.
-        
+
         Args:
             auth_method: Authentication method (AuthMethod instance, method name, or None for auto)
+            _legacy_email: Deprecated positional email arg for backward compatibility
             **auth_kwargs: Authentication parameters (username, password, api_key, email, etc.)
         """
         self.log = AcledLogger().get_logger()
 
+        auth_kwargs["_legacy_email"] = _legacy_email
+        auth_method, auth_kwargs = _handle_legacy_positional_args(auth_method, auth_kwargs)
         _validate_auth_method_arg(auth_method)
 
         # Simple auth handling - delegate all logic to AuthFactory
