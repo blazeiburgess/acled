@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch
 from acled.clients.cast_client import CastClient
 from acled.clients.base_http_client import BaseHttpClient
-from acled.models.enums import ExportType
+from acled.models.enums import ResponseFormat
 from acled.exceptions import ApiError
 
 
