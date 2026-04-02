@@ -14,8 +14,9 @@ from acled.clients.actor_client import ActorClient
 from acled.clients.actor_type_client import ActorTypeClient
 from acled.clients.cast_client import CastClient
 from acled.clients.country_client import CountryClient
+from acled.clients.deleted_client import DeletedClient
 from acled.clients.region_client import RegionClient
-from acled.models import AcledEvent, Actor, ActorType, CastForecast, Country, Region
+from acled.models import AcledEvent, Actor, ActorType, CastForecast, DeletedEvent, Country, Region
 from acled.models.enums import ExportType
 from acled.auth import AuthMethod, AuthFactory
 from acled.clients.base_http_client import _validate_auth_method_arg
@@ -93,6 +94,7 @@ class AcledClient:
         self._actor_client = ActorClient(auth_method=auth)
         self._cast_client = CastClient(auth_method=auth)
         self._country_client = CountryClient(auth_method=auth)
+        self._deleted_client = DeletedClient(auth_method=auth)
         self._region_client = RegionClient(auth_method=auth)
         self._actor_type_client = ActorTypeClient(auth_method=auth)
 
@@ -293,6 +295,47 @@ class AcledClient:
             vac_observed=vac_observed,
             timestamp=timestamp,
             fields=fields,
+            export_type=export_type,
+            limit=limit,
+            page=page,
+            query_params=query_params,
+        )
+
+    def get_deleted_data(
+        self,
+        event_id_cnty: Optional[str] = None,
+        deleted_timestamp: Optional[Union[int, str, date]] = None,
+        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        limit: int = 50,
+        page: Optional[int] = None,
+        query_params: Optional[Dict[str, Any]] = None,
+    ) -> List[DeletedEvent]:
+        """
+        Retrieves deleted event records from the ACLED database.
+
+        Args:
+            event_id_cnty (Optional[str]): Filter by event ID (supports LIKE).
+            deleted_timestamp (Optional[Union[int, str, date]]): Filter by deletion timestamp (>= value).
+            export_type (Optional[Union[str, ExportType]]): Specify the export type ('json', 'xml', 'csv', etc.).
+            limit (int): Number of records to retrieve (default is 50).
+            page (Optional[int]): Page number for pagination.
+            query_params (Optional[Dict[str, Any]]): Additional query parameters (e.g., to use '_where' suffix).
+
+        Returns:
+            List[DeletedEvent]: A list of deleted event records matching the filters.
+
+        Raises:
+            ApiError: If there's an error with the API request or response.
+            NetworkError: For network connectivity issues.
+            TimeoutError: When the request times out.
+            RateLimitError: When API rate limits are exceeded.
+            ServerError: For 5xx server errors.
+            ClientError: For 4xx client errors.
+            RetryError: When maximum retry attempts are exhausted.
+        """
+        return self._deleted_client.get_data(
+            event_id_cnty=event_id_cnty,
+            deleted_timestamp=deleted_timestamp,
             export_type=export_type,
             limit=limit,
             page=page,
