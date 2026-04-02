@@ -95,12 +95,12 @@ class TestActorClient:
         }
         mock_get_response.return_value = mock_response
 
-        # Call with ResponseFormat enum
-        client.get_data(response_format=ResponseFormat.CSV)
+        # Call with explicit ResponseFormat.JSON
+        client.get_data(response_format=ResponseFormat.JSON)
 
-        # Verify the API call
+        # Verify the API call sends _format=json
         args, kwargs = mock_get_response.call_args
-        assert kwargs['params']['_format'] == 'csv'
+        assert kwargs['params']['_format'] == 'json'
 
     def test_get_data_api_error(self, client, mock_get_response):
         # Mock error response
