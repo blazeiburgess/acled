@@ -2,12 +2,11 @@
 
 import argparse
 import getpass
-import sys
 from typing import Optional
 
-from acled.cli.utils.auth import CredentialManager, AuthenticationError
+from acled.auth import AuthFactory, CookieAuth, OAuthTokenAuth
+from acled.cli.utils.auth import CredentialManager
 from acled.clients import AcledClient
-from acled.auth import AuthFactory, OAuthTokenAuth
 
 
 class AuthCommand:
@@ -112,15 +111,14 @@ Examples:
 
         if args.auth_command == 'login':
             return self._handle_login(args)
-        elif args.auth_command == 'logout':
+        if args.auth_command == 'logout':
             return self._handle_logout(args)
-        elif args.auth_command == 'status':
+        if args.auth_command == 'status':
             return self._handle_status(args)
-        elif args.auth_command == 'test':
+        if args.auth_command == 'test':
             return self._handle_test(args)
-        else:
-            print(f"Error: Unknown auth command: {args.auth_command}")
-            return 1
+        print(f"Error: Unknown auth command: {args.auth_command}")
+        return 1
 
     def _handle_login(self, args: argparse.Namespace) -> int:
         """Handle login command."""
@@ -132,14 +130,14 @@ Examples:
                 return 1
 
             auth_method = args.method
-            
+
             # For auto mode, detect based on provided credentials
             if auth_method == 'auto':
                 # Check what credentials we're getting
                 has_username = bool(args.username or args.email)
                 has_password = bool(args.password)
                 has_api_key = bool(args.api_key)
-                
+
                 if has_username or has_password:
                     # Modern auth - will auto-select OAuth or Cookie
                     auth_method = 'oauth'  # Factory will handle fallback to cookie
@@ -155,7 +153,7 @@ Examples:
                         auth_method = 'legacy'
                     else:
                         auth_method = 'oauth'
-            
+
             if auth_method == 'legacy':
                 # Get legacy credentials
                 api_key = args.api_key
@@ -186,25 +184,25 @@ Examples:
                     email=email.strip(),
                     auth_method='legacy'
                 )
-                
+
             else:  # oauth or cookie
                 # Handle modern authentication (OAuth/Cookie)
                 username = args.username or args.email  # Accept either
                 password = args.password
-                
+
                 # Prompt for missing credentials
                 if not username:
                     username = input("ACLED Username/Email: ")
                     if not username.strip():
                         print("Error: Username/email is required for authentication.")
                         return 1
-                
+
                 if not password:
                     password = getpass.getpass("ACLED Password: ")
                     if not password.strip():
                         print("Error: Password is required for authentication.")
                         return 1
-                
+
                 # Validate credentials
                 print(f"Validating {auth_method} credentials...")
                 if auth_method == 'cookie':
@@ -238,7 +236,7 @@ Examples:
             print(f"Error storing credentials: {e}")
             return 1
 
-    def _handle_logout(self, args: argparse.Namespace) -> int:
+    def _handle_logout(self, _args: argparse.Namespace) -> int:
         """Handle logout command."""
         try:
             if not self.credential_manager.has_stored_credentials():
@@ -253,7 +251,7 @@ Examples:
             print(f"Error clearing credentials: {e}")
             return 1
 
-    def _handle_status(self, args: argparse.Namespace) -> int:
+    def _handle_status(self, _args: argparse.Namespace) -> int:
         """Handle status command."""
         try:
             if self.credential_manager.has_stored_credentials():
@@ -270,7 +268,7 @@ Examples:
             print(f"Error checking status: {e}")
             return 1
 
-    def _handle_test(self, args: argparse.Namespace) -> int:
+    def _handle_test(self, _args: argparse.Namespace) -> int:
         """Handle test command."""
         try:
             if not self.credential_manager.has_stored_credentials():
@@ -288,14 +286,14 @@ Examples:
                     print("✓ Credentials are valid.")
                     return 0
             else:  # modern auth (oauth/cookie)
-                # Create auth instance from stored credentials  
+                # Create auth instance from stored credentials
                 try:
                     username = creds.get('username') or creds.get('email')
                     password = creds.get('password')
                     if not username or not password:
                         print("✗ Incomplete credentials stored.")
                         return 1
-                    
+
                     # Try with stored method first
                     try:
                         auth = AuthFactory.create_auth(
@@ -320,7 +318,7 @@ Examples:
                         return 0
                 except Exception:
                     pass
-            
+
             print("✗ Stored credentials are invalid.")
             print("Use 'acled auth login --force' to update them.")
             return 1
@@ -341,7 +339,7 @@ Examples:
 
         except Exception:
             return False
-    
+
     def _validate_modern_credentials(self, username: str, password: str) -> Optional[str]:
         """Validate modern credentials by testing authentication.
 
@@ -360,18 +358,16 @@ Examples:
         except Exception:
             # If OAuth fails, try cookie
             try:
-                from acled.auth import CookieAuth
                 auth = CookieAuth(username=username, password=password)
                 client = AcledClient(auth_method=auth)
                 client.get_data(limit=1)
                 return 'cookie'
             except Exception:
                 return None
-    
+
     def _validate_cookie_credentials(self, username: str, password: str) -> bool:
         """Validate cookie credentials by testing authentication."""
         try:
-            from acled.auth import CookieAuth
             auth = CookieAuth(username=username, password=password)
             client = AcledClient(auth_method=auth)
             client.get_data(limit=1)
