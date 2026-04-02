@@ -332,3 +332,43 @@ class TestAuthFactory:
         with patch.dict(os.environ, {}, clear=True):
             with pytest.raises(AcledMissingAuthError):
                 AuthFactory.from_environment()
+
+    @patch('acled.auth.requests.post')
+    def test_auto_detect_propagates_api_error(self, mock_post):
+        """Test that _auto_detect propagates ApiError instead of swallowing it."""
+        from requests.exceptions import ConnectionError as ReqConnectionError
+        mock_post.side_effect = ReqConnectionError("Connection refused")
+
+        # ApiError from failed OAuth should propagate, not silently fall back
+        with pytest.raises(ApiError):
+            AuthFactory._auto_detect(username="user", password="pass")
+
+    @patch('acled.auth.requests.post')
+    def test_from_environment_propagates_api_error(self, mock_post):
+        """Test that from_environment propagates ApiError instead of falling back."""
+        from requests.exceptions import ConnectionError as ReqConnectionError
+        mock_post.side_effect = ReqConnectionError("Connection refused")
+
+        with patch.dict(os.environ, {
+            'ACLED_USERNAME': 'user',
+            'ACLED_PASSWORD': 'pass'
+        }, clear=True):
+            with pytest.raises(ApiError):
+                AuthFactory.from_environment()
+
+    @patch('acled.auth.requests.post')
+    def test_auto_detect_does_not_fallback_on_bad_credentials(self, mock_post):
+        """Test that invalid credentials don't silently fall back to legacy."""
+        from requests.exceptions import HTTPError
+        mock_response = Mock()
+        mock_response.status_code = 401
+        mock_response.raise_for_status.side_effect = HTTPError("401 Unauthorized")
+        mock_post.return_value = mock_response
+
+        # Even if legacy credentials exist, bad OAuth creds should not silently
+        # fall through to legacy auth
+        with pytest.raises(ApiError):
+            AuthFactory._auto_detect(
+                username="user", password="wrong",
+                api_key="key", email="e@x.com"
+            )
