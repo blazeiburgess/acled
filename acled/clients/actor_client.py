@@ -119,12 +119,17 @@ class ActorClient(BaseHttpClient):
             ValueError: If there's an error during parsing.
         """
         try:
-            actor_data['first_event_date'] = datetime.strptime(
-                actor_data['first_event_date'], '%Y-%m-%d'
-            ).date()
-            actor_data['last_event_date'] = datetime.strptime(
-                actor_data['last_event_date'], '%Y-%m-%d'
-            ).date()
+            # Parse first_event_date if it's a string
+            if isinstance(actor_data.get('first_event_date'), str):
+                actor_data['first_event_date'] = datetime.strptime(
+                    actor_data['first_event_date'], '%Y-%m-%d'
+                ).date()
+
+            # Parse last_event_date if it's a string
+            if isinstance(actor_data.get('last_event_date'), str):
+                actor_data['last_event_date'] = datetime.strptime(
+                    actor_data['last_event_date'], '%Y-%m-%d'
+                ).date()
             actor_data['event_count'] = int(actor_data.get('event_count', 0))
 
             return actor_data
