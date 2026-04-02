@@ -58,10 +58,3 @@ class BaseCommand(ABC):
             type=int,
             help='Page number for pagination'
         )
-        parser.add_argument(
-            '--format',
-            dest='response_format',
-            choices=['json', 'xml', 'csv'],
-            default='json',
-            help='Response format (default: json)'
-        )
