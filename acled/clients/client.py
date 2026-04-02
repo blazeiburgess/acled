@@ -130,7 +130,9 @@ class AcledClient:
         source_scale: Optional[str] = None,
         notes: Optional[str] = None,
         fatalities: Optional[int] = None,
+        tags: Optional[str] = None,
         timestamp: Optional[Union[int, str, date]] = None,
+        fields: Optional[str] = None,
         export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
         limit: int = 50,
         page: Optional[int] = None,
@@ -169,7 +171,9 @@ class AcledClient:
             source_scale (Optional[str]): Filter by source scale (supports LIKE).
             notes (Optional[str]): Filter by notes (supports LIKE).
             fatalities (Optional[int]): Filter by number of fatalities.
+            tags (Optional[str]): Filter by tags (supports LIKE).
             timestamp (Optional[Union[int, str, date]]): Filter by timestamp (>= value).
+            fields (Optional[str]): Pipe-separated list of fields to return (e.g. 'country|event_date|fatalities').
             export_type (Optional[Union[str, ExportType]]): Specify the export type ('json', 'xml', 'csv', etc.).
             limit (int): Number of records to retrieve (default is 50).
             page (Optional[int]): Page number for pagination.
@@ -217,7 +221,9 @@ class AcledClient:
             source_scale=source_scale,
             notes=notes,
             fatalities=fatalities,
+            tags=tags,
             timestamp=timestamp,
+            fields=fields,
             export_type=export_type,
             limit=limit,
             page=page,
