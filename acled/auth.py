@@ -680,17 +680,17 @@ class AuthFactory:
                     password=password,
                     token_file=kwargs.get("token_file")
                 )
-            except Exception as e:
-                # If OAuth fails, try cookie auth
+            except AcledMissingAuthError:
+                # Missing credentials for OAuth — try cookie auth
                 try:
                     return CookieAuth(username=username, password=password)
-                except Exception:
-                    # If both fail but we have API key, fall back to legacy
+                except AcledMissingAuthError:
+                    # Missing credentials for cookie too — fall back to legacy
                     if api_key and email:
                         return LegacyKeyEmailAuth(api_key=api_key, email=email)
-                    else:
-                        # Re-raise the OAuth error if no fallback available
-                        raise e
+                    raise
+                # ApiError, NetworkError, etc. from OAuth/Cookie propagate
+                # — they indicate the credentials were tried and failed
 
         # Use legacy if only API key/email available
         elif api_key and email:
@@ -740,32 +740,29 @@ class AuthFactory:
         # Auto-detect based on available environment variables
         # Priority: OAuth/Cookie > Legacy
         if username and password:
-            # Try OAuth first, fall back to cookie if it fails
+            # Try OAuth first, fall back to cookie only if credentials are missing
+            # (not if the auth endpoint is down or credentials are invalid)
             try:
                 return AuthFactory.create_auth(
                     "oauth",
                     username=username,
                     password=password
                 )
-            except Exception:
+            except AcledMissingAuthError:
                 try:
                     return AuthFactory.create_auth(
                         "cookie",
                         username=username,
                         password=password
                     )
-                except Exception:
-                    # If both fail but we have API key, try legacy
+                except AcledMissingAuthError:
                     if api_key and email:
                         return AuthFactory.create_auth(
                             "legacy",
                             api_key=api_key,
                             email=email
                         )
-                    else:
-                        raise AcledMissingAuthError(
-                            "Failed to authenticate with OAuth/Cookie using provided credentials"
-                        )
+                    raise
 
         elif api_key and email:
             return AuthFactory.create_auth(
