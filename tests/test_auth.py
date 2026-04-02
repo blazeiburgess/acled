@@ -253,6 +253,46 @@ class TestOAuthTokenPersistence:
             mock_save.assert_not_called()
 
 
+class TestTokenPersistenceRoundTrip:
+    """Test real save_tokens/load_tokens without mocking."""
+
+    def test_save_and_load_tokens(self, tmp_path):
+        """Test that tokens survive a round-trip through save/load."""
+        token_file = str(tmp_path / "tokens.json")
+
+        auth = OAuthTokenAuth.__new__(OAuthTokenAuth)
+        auth.access_token = "test_access_token"
+        auth.refresh_token = "test_refresh_token"
+        auth.access_token_expires_at = datetime(2026, 6, 1, 12, 0, 0)
+        auth.refresh_token_expires_at = datetime(2026, 6, 15, 12, 0, 0)
+        auth.token_file = token_file
+        auth.log = Mock()
+
+        # Save
+        auth.save_tokens(token_file)
+
+        # Verify file exists with restricted permissions
+        import os, stat
+        assert os.path.exists(token_file)
+        mode = os.stat(token_file).st_mode
+        assert not (mode & stat.S_IROTH), "Token file should not be world-readable"
+
+        # Load into a fresh instance
+        auth2 = OAuthTokenAuth.__new__(OAuthTokenAuth)
+        auth2.access_token = None
+        auth2.refresh_token = None
+        auth2.access_token_expires_at = None
+        auth2.refresh_token_expires_at = None
+        auth2.log = Mock()
+
+        auth2.load_tokens(token_file)
+
+        assert auth2.access_token == "test_access_token"
+        assert auth2.refresh_token == "test_refresh_token"
+        assert auth2.access_token_expires_at == datetime(2026, 6, 1, 12, 0, 0)
+        assert auth2.refresh_token_expires_at == datetime(2026, 6, 15, 12, 0, 0)
+
+
 class TestAuthFactory:
     """Test AuthFactory for creating authentication instances."""
     
