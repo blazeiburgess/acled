@@ -12,9 +12,10 @@ from datetime import datetime, date
 from acled.clients.acled_data_client import AcledDataClient
 from acled.clients.actor_client import ActorClient
 from acled.clients.actor_type_client import ActorTypeClient
+from acled.clients.cast_client import CastClient
 from acled.clients.country_client import CountryClient
 from acled.clients.region_client import RegionClient
-from acled.models import AcledEvent, Actor, ActorType, Country, Region
+from acled.models import AcledEvent, Actor, ActorType, CastForecast, Country, Region
 from acled.models.enums import ExportType
 from acled.auth import AuthMethod, AuthFactory
 from acled.clients.base_http_client import _validate_auth_method_arg
@@ -90,6 +91,7 @@ class AcledClient:
 
         self._acled_data_client = AcledDataClient(auth_method=auth)
         self._actor_client = ActorClient(auth_method=auth)
+        self._cast_client = CastClient(auth_method=auth)
         self._country_client = CountryClient(auth_method=auth)
         self._region_client = RegionClient(auth_method=auth)
         self._actor_type_client = ActorTypeClient(auth_method=auth)
@@ -214,6 +216,83 @@ class AcledClient:
             notes=notes,
             fatalities=fatalities,
             timestamp=timestamp,
+            export_type=export_type,
+            limit=limit,
+            page=page,
+            query_params=query_params,
+        )
+
+    def get_cast_data(
+        self,
+        country: Optional[str] = None,
+        admin1: Optional[str] = None,
+        month: Optional[str] = None,
+        year: Optional[int] = None,
+        total_forecast: Optional[int] = None,
+        battles_forecast: Optional[int] = None,
+        erv_forecast: Optional[int] = None,
+        vac_forecast: Optional[int] = None,
+        total_observed: Optional[int] = None,
+        battles_observed: Optional[int] = None,
+        erv_observed: Optional[int] = None,
+        vac_observed: Optional[int] = None,
+        timestamp: Optional[Union[int, str, date]] = None,
+        fields: Optional[str] = None,
+        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        limit: int = 50,
+        page: Optional[int] = None,
+        query_params: Optional[Dict[str, Any]] = None,
+    ) -> List[CastForecast]:
+        """
+        Retrieves CAST (Conflict Alert System) forecast data.
+
+        Args:
+            country (Optional[str]): Filter by country name (supports LIKE).
+            admin1 (Optional[str]): Filter by first-level administrative division (supports LIKE).
+            month (Optional[str]): Filter by month (supports LIKE).
+            year (Optional[int]): Filter by year.
+            total_forecast (Optional[int]): Filter by total forecasted events.
+            battles_forecast (Optional[int]): Filter by forecasted battle events.
+            erv_forecast (Optional[int]): Filter by forecasted explosions/remote violence events.
+            vac_forecast (Optional[int]): Filter by forecasted violence against civilians events.
+            total_observed (Optional[int]): Filter by total observed events.
+            battles_observed (Optional[int]): Filter by observed battle events.
+            erv_observed (Optional[int]): Filter by observed explosions/remote violence events.
+            vac_observed (Optional[int]): Filter by observed violence against civilians events.
+            timestamp (Optional[Union[int, str, date]]): Filter by timestamp (>= value).
+            fields (Optional[str]): Pipe-separated list of fields to return (e.g. 'country|year|total_forecast').
+            export_type (Optional[Union[str, ExportType]]): Specify the export type ('json', 'xml', 'csv', etc.).
+            limit (int): Number of records to retrieve (default is 50).
+            page (Optional[int]): Page number for pagination.
+            query_params (Optional[Dict[str, Any]]): Additional query parameters (e.g., to use '_where' suffix).
+
+        Returns:
+            List[CastForecast]: A list of CAST forecasts matching the filters.
+
+        Raises:
+            ApiError: If there's an error with the API request or response.
+            NetworkError: For network connectivity issues.
+            TimeoutError: When the request times out.
+            RateLimitError: When API rate limits are exceeded.
+            ServerError: For 5xx server errors.
+            ClientError: For 4xx client errors.
+            RetryError: When maximum retry attempts are exhausted.
+        """
+        return self._cast_client.get_data(
+            country=country,
+            admin1=admin1,
+            month=month,
+            year=year,
+            total_forecast=total_forecast,
+            battles_forecast=battles_forecast,
+            erv_forecast=erv_forecast,
+            vac_forecast=vac_forecast,
+            total_observed=total_observed,
+            battles_observed=battles_observed,
+            erv_observed=erv_observed,
+            vac_observed=vac_observed,
+            timestamp=timestamp,
+            fields=fields,
             export_type=export_type,
             limit=limit,
             page=page,
