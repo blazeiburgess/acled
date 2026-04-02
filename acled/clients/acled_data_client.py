@@ -10,11 +10,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Union
 
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 
 from acled.clients.base_http_client import BaseHttpClient
 from acled.models import AcledEvent
-from acled.models.enums import ExportType
+from acled.models.enums import ResponseFormat, ExportType
 from acled.exceptions import ApiError, NetworkError, TimeoutError, RateLimitError, RetryError, ServerError, ClientError
 
 
@@ -66,7 +66,8 @@ class AcledDataClient(BaseHttpClient):
         tags: Optional[str] = None,
         timestamp: Optional[Union[int, str, date]] = None,
         fields: Optional[str] = None,
-        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        export_type: Optional[str] = None,
+        response_format: Optional[Union[str, ResponseFormat]] = ResponseFormat.JSON,
         limit: int = 50,
         page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
@@ -107,8 +108,9 @@ class AcledDataClient(BaseHttpClient):
             tags (Optional[str]): Filter by tags (supports LIKE).
             timestamp (Optional[Union[int, str, date]]): Filter by timestamp (>= value).
             fields (Optional[str]): Pipe-separated list of fields to return (e.g. 'country|event_date|fatalities').
-            export_type (Optional[Union[str, ExportType]]): Specify the export type ('json', 'xml', 'csv', etc.).
-            limit (int): Number of records to retrieve (default is 50).
+            export_type (Optional[str]): Data structure format — 'dyadic' (default) or 'monadic'.
+            response_format (Optional[Union[str, ResponseFormat]]): Response serialization format ('json', 'csv', etc.).
+            limit (int): Number of records to retrieve (default: 50; API default is 5000).
             page (Optional[int]): Page number for pagination.
             query_params (Optional[Dict[str, Any]]): Additional query parameters (e.g., to use '_where' suffix).
 
@@ -165,6 +167,13 @@ class AcledDataClient(BaseHttpClient):
 
         # Remove None values
         params = {k: v for k, v in params.items() if v is not None}
+
+        # Map response_format to _format (the actual API parameter)
+        if response_format is not None:
+            if isinstance(response_format, ResponseFormat):
+                params['_format'] = response_format.value
+            else:
+                params['_format'] = response_format
 
         # Add any additional query parameters
         if query_params:
@@ -223,7 +232,7 @@ class AcledDataClient(BaseHttpClient):
                 event_data['fatalities'] = int(event_data['fatalities'])
             if event_data.get('timestamp') is not None:
                 event_data['timestamp'] = datetime.fromtimestamp(
-                    int(event_data['timestamp'])
+                    int(event_data['timestamp']), tz=timezone.utc
                 )
 
             return event_data

@@ -12,7 +12,7 @@ import requests
 
 from acled.clients.base_http_client import BaseHttpClient
 from acled.models import CastForecast
-from acled.models.enums import ExportType
+from acled.models.enums import ResponseFormat, ExportType
 from acled.exceptions import ApiError
 
 
@@ -46,7 +46,7 @@ class CastClient(BaseHttpClient):
         vac_observed: Optional[int] = None,
         timestamp: Optional[Union[int, str, date]] = None,
         fields: Optional[str] = None,
-        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        response_format: Optional[Union[str, ResponseFormat]] = ResponseFormat.JSON,
         limit: int = 50,
         page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
@@ -69,7 +69,7 @@ class CastClient(BaseHttpClient):
             vac_observed (Optional[int]): Filter by observed violence against civilians events.
             timestamp (Optional[Union[int, str, date]]): Filter by timestamp (>= value).
             fields (Optional[str]): Pipe-separated list of fields to return (e.g. 'country|year|total_forecast').
-            export_type (Optional[Union[str, ExportType]]): Specify the export type ('json', 'xml', 'csv', etc.).
+            response_format (Optional[Union[str, ResponseFormat]]): Response serialization format ('json', 'csv', etc.).
             limit (int): Number of records to retrieve (default is 50).
             page (Optional[int]): Page number for pagination.
             query_params (Optional[Dict[str, Any]]): Additional query parameters (e.g., to use '_where' suffix).
@@ -114,11 +114,11 @@ class CastClient(BaseHttpClient):
                 params['timestamp'] = str(timestamp)
         if fields is not None:
             params['fields'] = fields
-        if export_type is not None:
-            if isinstance(export_type, ExportType):
-                params['export_type'] = export_type.value
+        if response_format is not None:
+            if isinstance(response_format, ResponseFormat):
+                params['_format'] = response_format.value
             else:
-                params['export_type'] = export_type
+                params['_format'] = response_format
         params['limit'] = str(limit) if limit else '50'
         if page is not None:
             params['page'] = str(page)
