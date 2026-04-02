@@ -12,7 +12,7 @@ Install via `pip`:
 pip install acled
 ```
 
-## Python Library Authentication
+## Authentication
 
 ACLED requires authentication for all API requests. Register on the [ACLED website](https://acleddata.com/register/) to get credentials.
 
@@ -23,25 +23,27 @@ The library supports multiple authentication methods:
 Use your ACLED username/email and password:
 
 ```python
+from acled import AcledClient
+
 # Auto-detect best method (OAuth or Cookie)
 client = AcledClient(username="your_email", password="your_password")
 
 # Or use environment variables
-export ACLED_USERNAME="your_email"  # or ACLED_EMAIL
-export ACLED_PASSWORD="your_password"
+# export ACLED_USERNAME="your_email"  (or ACLED_EMAIL)
+# export ACLED_PASSWORD="your_password"
 client = AcledClient()  # Auto-detects from environment
 ```
 
 ### Legacy Authentication (API Key)
 
-Still supported for backward compatibility:
+Still supported in the code, but seems broken in the API. Will be removed soon once confirmed:
 
 ```python
 client = AcledClient(api_key="your_api_key", email="your_email")
 
 # Or use environment variables
-export ACLED_API_KEY="your_api_key"
-export ACLED_EMAIL="your_email"
+# export ACLED_API_KEY="your_api_key"
+# export ACLED_EMAIL="your_email"
 ```
 
 ## Basic Usage
@@ -51,57 +53,46 @@ from acled import AcledClient
 from acled.models import AcledEvent
 from typing import List
 
-# Initialize with modern auth (recommended)
-client = AcledClient(username="your_email", password="your_password")
+client = AcledClient()
 
-# Or auto-detect from environment
-client = AcledClient()  # Uses ACLED_USERNAME/ACLED_PASSWORD or ACLED_API_KEY/ACLED_EMAIL
-
-# Fetch data with filters
+# Fetch event data with filters
 events: List[AcledEvent] = client.get_data(
     country='Yemen',
     year=2024,
     limit=10
 )
 
-# Process events
 for event in events:
-    print(f"{event['event_date']}: {event['event_type']} - {event['notes'][:100]}...")
+    print(f"{event['event_date']}: {event['event_type']} - {event['country']}")
 ```
 
 ## Advanced Usage
 
 ### Filtering Data
 
-The API supports various filtering options for retrieving specific data:
-
 ```python
 from acled import AcledClient
-from acled.models.enums import ExportType
 
 client = AcledClient()
 
 # Fetch data with multiple filters
 events = client.get_data(
-    country='Yemen',           # Filter by country
-    year=2023,                 # Filter by year
-    event_type='Battles',      # Filter by event type
-    fatalities=5,              # Filter by fatalities
-    export_type=ExportType.JSON,  # Specify export format
-    limit=5,                   # Limit number of results
+    country='Yemen',
+    year=2023,
+    event_type='Battles',
+    fatalities=5,
+    limit=5,
 )
 
 for event in events:
-    print(f"{event['country']} - {event['event_date']} - {event['fatalities']} fatalities - {event['event_type']}")
+    print(f"{event['country']} - {event['event_date']} - {event['fatalities']} fatalities")
 ```
 
 ### Using Filter Operators
 
-You can use different operators for filtering by appending a `_where` suffix to parameter names in the `query_params` dictionary:
+Use `_where` suffixes via the `query_params` dictionary to change the default filter operator:
 
 ```python
-from acled import AcledClient
-
 client = AcledClient()
 
 # Filter events with more than 5 fatalities
@@ -109,284 +100,296 @@ events = client.get_data(
     country='Yemen',
     fatalities=5,
     limit=10,
-    query_params={
-        'fatalities_where': '>',  # Greater than
-    }
+    query_params={'fatalities_where': '>'},
 )
 
-# Filter events with event_type containing the word "Violence"
+# Filter events with event_type containing "Violence"
 events = client.get_data(
     limit=10,
     query_params={
         'event_type': 'Violence',
-        'event_type_where': 'LIKE',  # LIKE operator for partial matching
+        'event_type_where': 'LIKE',
     }
 )
 ```
 
 Available operators:
 - `=` (default): Exact match
-- `>`: Greater than
-- `<`: Less than
-- `>=`: Greater than or equal to
-- `<=`: Less than or equal to
+- `>`, `<`, `>=`, `<=`: Comparison operators
 - `LIKE`: Partial match (case-insensitive)
+- `BETWEEN`: Range filter (use pipe `|` to separate values)
 
 ### Date Range Filtering
 
-For date ranges, use the pipe character (`|`) to separate start and end dates:
+Use `BETWEEN` with pipe-separated dates:
 
 ```python
 events = client.get_data(
-    event_date='2023-01-01|2023-12-31',  # Events from Jan 1 to Dec 31, 2023
-    limit=50
+    event_date='2023-01-01|2023-12-31',
+    query_params={'event_date_where': 'BETWEEN'},
+    limit=50,
+)
+```
+
+### Dyadic vs Monadic Export
+
+The ACLED endpoint supports two data structure formats via `export_type`:
+
+```python
+# Dyadic (default): one row per event, with actor1/actor2 columns
+events = client.get_data(country='Yemen', limit=10)
+
+# Monadic: one row per actor-event, same event may appear twice
+events = client.get_data(country='Yemen', limit=10, export_type='monadic')
+```
+
+### Field Selection
+
+Limit which fields are returned using pipe-separated field names:
+
+```python
+events = client.get_data(
+    country='Yemen',
+    fields='country|event_date|event_type|fatalities',
+    limit=10,
 )
 ```
 
 ## Available Endpoints
 
-The library provides access to several ACLED API endpoints through specialized clients:
+The library provides access to all ACLED API endpoints:
 
-### 1. Event Data (Main Data)
+### 1. Event Data
+
+The main endpoint for conflict and protest events.
 
 ```python
-# Get event data
-events = client.get_data(limit=10)
+events = client.get_data(
+    country='Yemen',
+    year=2024,
+    event_type='Battles',
+    limit=10,
+)
+
+for event in events:
+    print(f"{event['event_date']} | {event['event_type']} | fatalities: {event['fatalities']}")
 ```
 
-### 2. Actor Data
+### 2. CAST Forecast Data
+
+Conflict Alert System forecasts — predicted and observed event counts by region and month.
 
 ```python
-# Get actor data
-actors = client.get_actor_data(limit=10)
+forecasts = client.get_cast_data(
+    country='Somalia',
+    year=2025,
+    limit=5,
+)
+
+for f in forecasts:
+    print(f"{f['country']} | {f['admin1']} | {f['month']}/{f['year']}"
+          f" | forecast: {f['total_forecast']} | observed: {f['total_observed']}")
+```
+
+### 3. Deleted Events
+
+Event IDs removed from the dataset (duplicates or out-of-scope).
+
+```python
+deleted = client.get_deleted_data(limit=5)
+
+for d in deleted:
+    print(f"{d['event_id_cnty']} | deleted_timestamp: {d['deleted_timestamp']}")
+```
+
+### 4. Actor Data
+
+```python
+actors = client.get_actor_data(limit=5)
+
 for actor in actors:
-    print(actor['actor_name'], actor['event_count'])
-```
-
-### 3. Country Data
-
-```python
-# Get country data
-countries = client.get_country_data(limit=10)
-for country in countries:
-    print(country['country'], country['event_count'])
-```
-
-### 4. Region Data
-
-```python
-# Get region data
-regions = client.get_region_data(limit=10)
-for region in regions:
-    print(region['region_name'], region['event_count'])
+    print(f"[{actor.get('mal_actor_id')}] {actor.get('label')}")
 ```
 
 ### 5. Actor Type Data
 
 ```python
-# Get actor type data
-actor_types = client.get_actor_type_data(limit=10)
-for actor_type in actor_types:
-    print(actor_type['actor_type_name'], actor_type['event_count'])
+actor_types = client.get_actor_type_data(limit=5)
+
+for at in actor_types:
+    print(at['actor_type_name'])
+```
+
+### 6. Country Data
+
+```python
+countries = client.get_country_data(limit=5)
+
+for c in countries:
+    print(f"{c.get('nicename')} | iso: {c.get('iso')} | iso3: {c.get('iso3')}")
+```
+
+### 7. Region Data
+
+```python
+regions = client.get_region_data(limit=5)
+
+for r in regions:
+    print(r['region_name'])
 ```
 
 ## Data Models
 
-The library provides TypedDict models for the data returned by the API:
+The library provides TypedDict models for type-checked API responses. All fields use `total=False` so missing fields don't raise errors (useful with the `fields` parameter).
 
 ### AcledEvent
 
-Represents an event with fields including:
-- `event_id_cnty`: Unique identifier for the event
-- `event_date`: Date of the event
-- `year`: Year of the event
-- `time_precision`: Precision of the event time (1=exact date, 2=approximate date, 3=estimated date)
-- `disorder_type`: Type of disorder (Political violence, Demonstrations, etc.)
-- `event_type`: Type of event (Battles, Violence against civilians, etc.)
-- `sub_event_type`: Sub-type of event
-- `actor1`, `actor2`: Primary actors involved in the event
-- `location`: Location name
-- `latitude`, `longitude`: Geographic coordinates
-- `fatalities`: Number of reported fatalities
-- `notes`: Description of the event
+Core event record with fields including:
+- `event_id_cnty`: Unique event identifier
+- `event_date`: Date of the event (`datetime.date`)
+- `year`, `time_precision`: Temporal metadata
+- `disorder_type`, `event_type`, `sub_event_type`: Event classification
+- `actor1`, `actor2`, `assoc_actor_1`, `assoc_actor_2`: Actors involved
+- `inter1`, `inter2`, `interaction`: Actor type codes
+- `country`, `admin1`, `admin2`, `admin3`, `location`: Location hierarchy
+- `latitude`, `longitude`, `geo_precision`: Coordinates
+- `fatalities`: Reported death count
+- `notes`, `tags`, `source`, `source_scale`: Descriptive metadata
+- `timestamp`: Upload timestamp (`datetime.datetime`, UTC)
 
-### Actor
+### CastForecast
 
-Represents an actor with fields including:
-- `actor_name`: Name of the actor
-- `first_event_date`: Date of the actor's first recorded event
-- `last_event_date`: Date of the actor's most recent recorded event
-- `event_count`: Total number of events involving this actor
+CAST conflict forecast with fields including:
+- `country`, `admin1`: Location
+- `month`, `year`: Time period
+- `total_forecast`, `battles_forecast`, `erv_forecast`, `vac_forecast`: Predicted event counts
+- `total_observed`, `battles_observed`, `erv_observed`, `vac_observed`: Actual event counts (populated after month ends)
 
-### Country
+### DeletedEvent
 
-Represents a country with fields including:
-- `country`: Country name
-- `iso`: ISO country code
-- `iso3`: ISO3 country code
-- `event_count`: Total number of events in this country
+Removed event record:
+- `event_id_cnty`: Event identifier
+- `deleted_timestamp`: Unix timestamp of deletion
 
-### Region
+### Actor, Country, Region, ActorType
 
-Represents a region with fields including:
-- `region`: Region ID
-- `region_name`: Region name
-- `event_count`: Total number of events in this region
-
-### ActorType
-
-Represents an actor type with fields including:
-- `actor_type_id`: Actor type ID
-- `actor_type_name`: Actor type name
-- `event_count`: Total number of events involving this actor type
+Metadata models for actors, countries, regions, and actor type categories. Field availability varies by endpoint — use `.get()` for safe access.
 
 ## Enums and Constants
-
-The library provides several enum classes for standardized values:
 
 ### TimePrecision
 
 ```python
 from acled.models.enums import TimePrecision
 
-# Use in filters or check values in events
-time_precision = TimePrecision.EXACT_DATE  # 1
+TimePrecision.EXACT_DATE       # 1
+TimePrecision.APPROXIMATE_DATE # 2
+TimePrecision.ESTIMATED_DATE   # 3
 ```
-
-- `EXACT_DATE` (1): The exact date is known
-- `APPROXIMATE_DATE` (2): The date is approximate
-- `ESTIMATED_DATE` (3): The date is estimated
 
 ### DisorderType
 
 ```python
 from acled.models.enums import DisorderType
 
-# Use in filters
-disorder_type = DisorderType.POLITICAL_VIOLENCE  # "Political violence"
+DisorderType.POLITICAL_VIOLENCE     # "Political violence"
+DisorderType.DEMONSTRATIONS         # "Demonstrations"
+DisorderType.STRATEGIC_DEVELOPMENTS # "Strategic developments"
 ```
-
-- `POLITICAL_VIOLENCE`: "Political violence"
-- `DEMONSTRATIONS`: "Demonstrations"
-- `STRATEGIC_DEVELOPMENTS`: "Strategic developments"
-
-### ExportType
-
-```python
-from acled.models.enums import ExportType
-
-# Specify the format of the returned data
-export_type = ExportType.JSON  # "json"
-```
-
-- `JSON`: "json"
-- `XML`: "xml"
-- `CSV`: "csv"
-- `XLSX`: "xlsx"
-- `TXT`: "txt"
 
 ### Actor
+
+Actor type codes for `inter1`/`inter2` filters:
 
 ```python
 from acled.models.enums import Actor
 
-# Use for inter1 and inter2 values
-actor_type = Actor.STATE_FORCES  # 1
+Actor.STATE_FORCES            # 1
+Actor.REBEL_FORCES            # 2
+Actor.MILITIA_GROUPS          # 3
+Actor.COMMUNAL_IDENTITY_GROUPS # 4
+Actor.RIOTERS                 # 5
+Actor.PROTESTERS              # 6
+Actor.CIVILIANS               # 7
+Actor.FOREIGN_OTHERS          # 8
 ```
-
-- `STATE_FORCES` (1)
-- `REBEL_FORCES` (2)
-- `MILITIA_GROUPS` (3)
-- `COMMUNAL_IDENTITY_GROUPS` (4)
-- `RIOTERS` (5)
-- `PROTESTERS` (6)
-- `CIVILIANS` (7)
-- `FOREIGN_OTHERS` (8)
 
 ### Region
 
 ```python
 from acled.models.enums import Region
 
-# Use in filters
-region = Region.WESTERN_AFRICA  # 1
+Region.WESTERN_AFRICA           # 1
+Region.MIDDLE_AFRICA            # 2
+Region.EASTERN_AFRICA           # 3
+Region.SOUTHERN_AFRICA          # 4
+Region.NOTHERN_AFRICA           # 5
+Region.SOUTH_ASIA               # 7
+Region.SOUTHEAST_ASIA           # 9
+Region.MIDDLE_EAST              # 11
+Region.EUROPE                   # 12
+Region.CAUCASUS_AND_CENTRAL_ASIA # 13
+Region.CENTRAL_AMERICA          # 14
+Region.SOUTH_AMERICA            # 15
+Region.CARIBBEAN                # 16
+Region.EAST_ASIA                # 17
+Region.NORTH_AMERICA            # 18
+Region.OCEANIA                  # 19
+Region.ANTARCTICA               # 20
 ```
 
-- `WESTERN_AFRICA` (1)
-- `MIDDLE_AFRICA` (2)
-- `EASTERN_AFRICA` (3)
-- `SOUTHERN_AFRICA` (4)
-- `NOTHERN_AFRICA` (5)
-- `SOUTH_ASIA` (7)
-- `SOUTHEAST_ASIA` (9)
-- `MIDDLE_EAST` (11)
-- `EUROPE` (12)
-- `CAUCASUS_AND_CENTRAL_ASIA` (13)
-- `CENTRAL_AMERICA` (14)
-- `SOUTH_AMERICA` (15)
-- `CARIBBEAN` (16)
-- `EAST_ASIA` (17)
-- `NORTH_AMERICA` (18)
-- `OCEANIA` (19)
-- `ANTARCTICA` (20)
+## Configuration
 
-## Configuration Options
-
-The library's behavior can be configured through environment variables:
+Environment variables for customizing library behavior:
 
 **Authentication:**
 - `ACLED_USERNAME` or `ACLED_EMAIL`: Username/email for modern auth
 - `ACLED_PASSWORD`: Password for modern auth
 - `ACLED_API_KEY`: API key for legacy auth
-- `ACLED_EMAIL`: Email for legacy auth (if not using modern auth)
+- `ACLED_EMAIL`: Email for legacy auth
 
-**Connection Settings:**
-- `ACLED_MAX_RETRIES`: Maximum number of retry attempts (default: 3)
-- `ACLED_RETRY_BACKOFF_FACTOR`: Backoff factor for calculating wait time between retries (default: 0.5)
+**Connection:**
+- `ACLED_MAX_RETRIES`: Maximum retry attempts (default: 3)
+- `ACLED_RETRY_BACKOFF_FACTOR`: Backoff multiplier between retries (default: 0.5)
 - `ACLED_REQUEST_TIMEOUT`: Request timeout in seconds (default: 30)
 
 ## CLI Usage
 
-The library includes a command-line interface for easy data access:
+The library includes a command-line interface:
 
 ### Authentication
 
-First, authenticate with your ACLED credentials:
-
 ```bash
-# Auto-detect best authentication method (recommended)
+# Auto-detect best method (recommended)
 acled auth login
 
-# Or specify a method
-acled auth login --method oauth   # OAuth tokens
-acled auth login --method cookie  # Session cookies
-acled auth login --method legacy  # API key/email
+# Specify a method
+acled auth login --method oauth
+acled auth login --method cookie
+acled auth login --method legacy
 ```
 
-This securely stores your credentials for future use.
-
-### Basic CLI Commands
+### Querying Data
 
 ```bash
 # Get recent events from Syria
 acled data --country Syria --year 2024 --limit 10
 
-# Get data with table output
-acled data --country Nigeria --format table
+# Filter by event type and fatalities
+acled data --country Yemen --event-type Battles --fatalities 5
 
-# Get data with specific filters
-acled data --country Yemen --event-type Battles --limit 5 --format summary
+# Date range query
+acled data --start-date 2024-01-01 --end-date 2024-06-30
 
-# Save output to file
+# Control output display format (global flag)
+acled --format table data --country Nigeria --limit 10
+acled --format csv data --country Syria --year 2024
+
+# Save to file
 acled data --country Afghanistan --year 2024 --output events.json
-
-# Get help for any command
-acled data --help
 ```
 
 ### CLI Authentication Options
-
-You can authenticate in three ways:
 
 1. **Secure login** (recommended):
    ```bash
@@ -395,14 +398,8 @@ You can authenticate in three ways:
 
 2. **Environment variables**:
    ```bash
-   # Modern auth (recommended)
    export ACLED_USERNAME="your_email"
    export ACLED_PASSWORD="your_password"
-   
-   # Or legacy auth
-   export ACLED_API_KEY="your_api_key"
-   export ACLED_EMAIL="your_email"
-   
    acled data --country Syria
    ```
 
@@ -413,45 +410,35 @@ You can authenticate in three ways:
 
 ## Important Notes
 
-ACLED is an amazing service provided at no cost, so please be respectful and measured in your usage. Consider implementing caching in your application to reduce the number of API calls.
+- The library defaults `limit` to 50 for safety. The API default is 5000. Increase the limit and use `page` for bulk data retrieval.
+- All API responses are parsed as JSON. The library does not support CSV/XML response formats directly.
+- ACLED is an amazing service provided at no cost. Please be respectful and measured in your usage. Consider caching results to reduce API calls.
 
 ## References
 
 - [ACLED Website](https://acleddata.com/)
-- [ACLED API Documentation](https://acleddata.com/acleddatanew/wp-content/uploads/2020/10/ACLED_API-User-Guide_2020.pdf) (2020)
+- [ACLED API Documentation](https://acleddata.com/api-documentation)
+- [Getting Started](https://acleddata.com/api-documentation/getting-started)
+- [ACLED Endpoint](https://acleddata.com/api-documentation/acled-endpoint)
+- [CAST Endpoint](https://acleddata.com/api-documentation/cast-endpoint)
+- [Deleted Endpoint](https://acleddata.com/api-documentation/deleted-endpoint)
+- [Elements of API Calls](https://acleddata.com/api-documentation/elements-acleds-api)
 
-## Development and Contributing
+## Development
 
-### Setting Up the Development Environment
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/blazeiburgess/acled.git
-   cd acled
-   ```
-
-2. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. Install in development mode with dev dependencies:
-   ```bash
-   pip install -e ".[dev]"
-   ```
-
-### Running Tests
+### Setup
 
 ```bash
-# Run all tests
-pytest
-
-# Run tests with coverage report
-pytest --cov=acled --cov-report=term-missing
+git clone https://github.com/blazeiburgess/acled.git
+cd acled
+python -m venv venv
+source venv/bin/activate
+pip install -e ".[dev]"
 ```
 
-## TODO
+### Tests
 
-- Add client for deleted api, add method to access from main client
-- Better document more advanced features (e.g. filter type changes = vs. > vs. < vs. LIKE). They should work now (partially tested), but are a little obscure.
+```bash
+pytest
+pytest --cov=acled --cov-report=term-missing
+```
