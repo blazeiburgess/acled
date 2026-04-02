@@ -117,13 +117,13 @@ class ActorTypeClient(BaseHttpClient):
             actor_type_data['actor_type_id'] = int(actor_type_data.get('actor_type_id', 0))
 
             # Parse first_event_date if it's a string
-            if isinstance(actor_type_data['first_event_date'], str):
+            if isinstance(actor_type_data.get('first_event_date'), str):
                 actor_type_data['first_event_date'] = datetime.strptime(
                     actor_type_data['first_event_date'], '%Y-%m-%d'
                 ).date()
 
             # Parse last_event_date if it's a string
-            if isinstance(actor_type_data['last_event_date'], str):
+            if isinstance(actor_type_data.get('last_event_date'), str):
                 actor_type_data['last_event_date'] = datetime.strptime(
                     actor_type_data['last_event_date'], '%Y-%m-%d'
                 ).date()
