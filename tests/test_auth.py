@@ -271,11 +271,12 @@ class TestTokenPersistenceRoundTrip:
         # Save
         auth.save_tokens(token_file)
 
-        # Verify file exists with restricted permissions
-        import os, stat
+        # Verify file exists with restricted permissions (Unix only)
+        import os, stat, platform
         assert os.path.exists(token_file)
-        mode = os.stat(token_file).st_mode
-        assert not (mode & stat.S_IROTH), "Token file should not be world-readable"
+        if platform.system() != "Windows":
+            mode = os.stat(token_file).st_mode
+            assert not (mode & stat.S_IROTH), "Token file should not be world-readable"
 
         # Load into a fresh instance
         auth2 = OAuthTokenAuth.__new__(OAuthTokenAuth)
