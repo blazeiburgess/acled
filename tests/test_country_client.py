@@ -207,13 +207,13 @@ def test_get_data_with_response_format():
         mock_get.reset_mock()
 
         # Test with string
-        result = client.get_data(response_format='csv')
+        result = client.get_data(response_format='json')
 
         assert len(result) == 1
 
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
-        assert kwargs['params']['_format'] == 'csv'
+        assert kwargs['params']['_format'] == 'json'
 
 def test_get_data_with_pagination():
     """Test that get_data correctly handles pagination parameters."""
