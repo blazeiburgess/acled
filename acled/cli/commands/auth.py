@@ -7,6 +7,7 @@ from typing import Optional
 from acled.auth import AuthFactory, CookieAuth, OAuthTokenAuth
 from acled.cli.utils.auth import CredentialManager
 from acled.clients import AcledClient
+from acled.exceptions import ApiError, AcledMissingAuthError
 
 
 class AuthCommand:
@@ -305,7 +306,7 @@ Examples:
                         client.get_data(limit=1)
                         print(f"✓ {auth_method.capitalize()} credentials are valid.")
                         return 0
-                    except Exception:
+                    except (ApiError, AcledMissingAuthError):
                         # Try auto-detect as fallback
                         auth = AuthFactory.create_auth(
                             'auto',
@@ -316,7 +317,7 @@ Examples:
                         client.get_data(limit=1)
                         print("✓ Credentials are valid.")
                         return 0
-                except Exception:
+                except (ApiError, AcledMissingAuthError):
                     pass
 
             print("✗ Stored credentials are invalid.")
@@ -330,14 +331,10 @@ Examples:
     def _validate_legacy_credentials(self, api_key: str, email: str) -> bool:
         """Validate legacy credentials by making a test API call."""
         try:
-            # Create a client with the provided credentials
             client = AcledClient(auth_method="legacy", api_key=api_key, email=email)
-
-            # Make a minimal test request (limit=1 to minimize data usage)
             client.get_data(limit=1)
             return True
-
-        except Exception:
+        except (ApiError, AcledMissingAuthError):
             return False
 
     def _validate_modern_credentials(self, username: str, password: str) -> Optional[str]:
@@ -347,22 +344,19 @@ Examples:
             The auth method that succeeded ('oauth' or 'cookie'), or None on failure.
         """
         try:
-            # Try OAuth first, with token caching
             token_file = self.credential_manager.get_token_file()
             auth = OAuthTokenAuth(username=username, password=password, token_file=token_file)
             client = AcledClient(auth_method=auth)
             client.get_data(limit=1)
-            # Save tokens now that we know they work
             auth.save_tokens(token_file)
             return 'oauth'
-        except Exception:
-            # If OAuth fails, try cookie
+        except (ApiError, AcledMissingAuthError):
             try:
                 auth = CookieAuth(username=username, password=password)
                 client = AcledClient(auth_method=auth)
                 client.get_data(limit=1)
                 return 'cookie'
-            except Exception:
+            except (ApiError, AcledMissingAuthError):
                 return None
 
     def _validate_cookie_credentials(self, username: str, password: str) -> bool:
@@ -372,5 +366,5 @@ Examples:
             client = AcledClient(auth_method=auth)
             client.get_data(limit=1)
             return True
-        except Exception:
+        except (ApiError, AcledMissingAuthError):
             return False
