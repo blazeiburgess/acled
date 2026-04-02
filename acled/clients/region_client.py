@@ -118,13 +118,13 @@ class RegionClient(BaseHttpClient):
             region_data['region'] = int(region_data.get('region', 0))
 
             # Parse first_event_date if it's a string
-            if isinstance(region_data['first_event_date'], str):
+            if isinstance(region_data.get('first_event_date'), str):
                 region_data['first_event_date'] = datetime.strptime(
                     region_data['first_event_date'], '%Y-%m-%d'
                 ).date()
 
             # Parse last_event_date if it's a string
-            if isinstance(region_data['last_event_date'], str):
+            if isinstance(region_data.get('last_event_date'), str):
                 region_data['last_event_date'] = datetime.strptime(
                     region_data['last_event_date'], '%Y-%m-%d'
                 ).date()
