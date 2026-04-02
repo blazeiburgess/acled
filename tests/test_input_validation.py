@@ -147,32 +147,36 @@ class TestInputValidation:
             assert kwargs['params']['first_event_date'] == 'invalid-date'
             assert kwargs['params']['event_count'] == 'not-a-number'
 
-    def test_parse_event_missing_required_fields(self):
-        """Test parsing event data with missing required fields"""
+    def test_parse_event_missing_optional_fields(self):
+        """Test parsing event data with missing fields (e.g. when using fields parameter)"""
         client = AcledDataClient(api_key="test_key", email="test@example.com")
-        
-        # Test with missing required fields
+
+        # Parser should handle missing fields gracefully (fields param can omit any column)
         event_data = {
             'event_id_cnty': 'TEST123',
-            # Missing event_date
+            # Missing event_date, latitude, longitude, etc.
             'year': '2023',
             'timestamp': '1672531200'
         }
-        
-        with pytest.raises(ValueError, match="Error parsing event data"):
-            client._parse_event(event_data)
 
-    def test_parse_actor_missing_required_fields(self):
-        """Test parsing actor data with missing required fields"""
+        result = client._parse_event(event_data)
+        assert result['event_id_cnty'] == 'TEST123'
+        assert result['year'] == 2023
+        assert 'event_date' not in result
+
+    def test_parse_actor_missing_optional_fields(self):
+        """Test parsing actor data with missing fields"""
         client = ActorClient(api_key="test_key", email="test@example.com")
-        
-        # Test with missing required fields
+
+        # Parser should handle missing fields gracefully
         actor_data = {
             'actor_name': 'Test Actor',
             # Missing first_event_date
             'last_event_date': '2023-01-31',
             'event_count': '10'
         }
-        
-        with pytest.raises(ValueError, match="Error parsing actor data"):
-            client._parse_actor(actor_data)
+
+        result = client._parse_actor(actor_data)
+        assert result['actor_name'] == 'Test Actor'
+        assert result['event_count'] == 10
+        assert 'first_event_date' not in result
