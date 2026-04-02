@@ -10,7 +10,7 @@ from datetime import datetime, date
 
 from acled.clients.base_http_client import BaseHttpClient
 from acled.models import Actor
-from acled.models.enums import ResponseFormat, ExportType
+from acled.models.enums import ResponseFormat
 from acled.exceptions import ApiError, NetworkError, TimeoutError, RateLimitError, RetryError, ServerError, ClientError
 
 
@@ -104,7 +104,7 @@ class ActorClient(BaseHttpClient):
             self.log.error("API Error: %s", error_message)
             raise ApiError(f"API Error: {error_message}")
 
-        except (NetworkError, TimeoutError, RateLimitError, ServerError, ClientError, RetryError) as e:
+        except (NetworkError, TimeoutError, RateLimitError, ServerError, ClientError, RetryError):
             # These exceptions are already logged in BaseHttpClient
             raise
         except Exception as e:
