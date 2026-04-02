@@ -63,7 +63,9 @@ class AcledDataClient(BaseHttpClient):
         source_scale: Optional[str] = None,
         notes: Optional[str] = None,
         fatalities: Optional[int] = None,
+        tags: Optional[str] = None,
         timestamp: Optional[Union[int, str, date]] = None,
+        fields: Optional[str] = None,
         export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
         limit: int = 50,
         page: Optional[int] = None,
@@ -102,7 +104,9 @@ class AcledDataClient(BaseHttpClient):
             source_scale (Optional[str]): Filter by source scale (supports LIKE).
             notes (Optional[str]): Filter by notes (supports LIKE).
             fatalities (Optional[int]): Filter by number of fatalities.
+            tags (Optional[str]): Filter by tags (supports LIKE).
             timestamp (Optional[Union[int, str, date]]): Filter by timestamp (>= value).
+            fields (Optional[str]): Pipe-separated list of fields to return (e.g. 'country|event_date|fatalities').
             export_type (Optional[Union[str, ExportType]]): Specify the export type ('json', 'xml', 'csv', etc.).
             limit (int): Number of records to retrieve (default is 50).
             page (Optional[int]): Page number for pagination.
@@ -151,7 +155,9 @@ class AcledDataClient(BaseHttpClient):
             'source_scale': source_scale,
             'notes': notes,
             'fatalities': fatalities,
+            'tags': tags,
             'timestamp': timestamp,
+            'fields': fields,
             'export_type': export_type,
             'limit': limit or 50,
             'page': page
@@ -201,17 +207,24 @@ class AcledDataClient(BaseHttpClient):
             ValueError: If there's an error during parsing.
         """
         try:
-            event_data['event_date'] = datetime.strptime(
-                event_data['event_date'], '%Y-%m-%d'
-            ).date()
-            event_data['year'] = int(event_data['year'])
-            event_data['time_precision'] = int(event_data.get('time_precision', 0))
-            event_data['latitude'] = float(event_data.get('latitude', 0.0))
-            event_data['longitude'] = float(event_data.get('longitude', 0.0))
-            event_data['fatalities'] = int(event_data.get('fatalities', 0))
-            event_data['timestamp'] = datetime.fromtimestamp(
-                int(event_data['timestamp'])
-            )
+            if isinstance(event_data.get('event_date'), str):
+                event_data['event_date'] = datetime.strptime(
+                    event_data['event_date'], '%Y-%m-%d'
+                ).date()
+            if event_data.get('year') is not None:
+                event_data['year'] = int(event_data['year'])
+            if event_data.get('time_precision') is not None:
+                event_data['time_precision'] = int(event_data['time_precision'])
+            if event_data.get('latitude') is not None:
+                event_data['latitude'] = float(event_data['latitude'])
+            if event_data.get('longitude') is not None:
+                event_data['longitude'] = float(event_data['longitude'])
+            if event_data.get('fatalities') is not None:
+                event_data['fatalities'] = int(event_data['fatalities'])
+            if event_data.get('timestamp') is not None:
+                event_data['timestamp'] = datetime.fromtimestamp(
+                    int(event_data['timestamp'])
+                )
 
             return event_data
         except (ValueError, KeyError) as e:
