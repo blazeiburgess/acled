@@ -26,7 +26,7 @@ Examples:
   acled data --country Syria --year 2024 --limit 10
 
   # Get data with table output
-  acled data --country Nigeria --format table
+  acled --format table data --country Nigeria
 
   # Get help for a specific command
   acled data --help
