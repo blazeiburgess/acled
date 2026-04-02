@@ -19,7 +19,7 @@ from acled.clients.region_client import RegionClient
 from acled.models import AcledEvent, Actor, ActorType, CastForecast, DeletedEvent, Country, Region
 from acled.models.enums import ExportType
 from acled.auth import AuthMethod, AuthFactory
-from acled.clients.base_http_client import _validate_auth_method_arg
+from acled.clients.base_http_client import _validate_auth_method_arg, _handle_legacy_positional_args
 
 
 class AcledClient:
@@ -53,31 +53,34 @@ class AcledClient:
                 Function to fetch region data.
     """
 
-    def __init__(self, auth_method: Optional[Union[str, AuthMethod]] = None, **auth_kwargs):
+    def __init__(self, auth_method: Optional[Union[str, AuthMethod]] = None, _legacy_email: Optional[str] = None, **auth_kwargs):
         """Initialize the ACLED client with authentication.
-        
+
         Args:
             auth_method: Authentication method (AuthMethod instance, method name, or None for auto)
+            _legacy_email: Deprecated positional email arg for backward compatibility
             **auth_kwargs: Authentication parameters (username, password, api_key, email, etc.)
-            
+
         Examples:
             # Auto-detect from environment
             client = AcledClient()
-            
+
             # OAuth/Cookie authentication (auto-selects best)
             client = AcledClient(username="user", password="pass")
-            
+
             # Legacy authentication
             client = AcledClient(api_key="key", email="email")
-            
+
             # Specific method
             client = AcledClient(auth_method="oauth", username="user", password="pass")
-            
+
             # With AuthMethod instance
             from acled.auth import OAuthTokenAuth
             auth = OAuthTokenAuth(username="user", password="pass")
             client = AcledClient(auth_method=auth)
         """
+        auth_kwargs["_legacy_email"] = _legacy_email
+        auth_method, auth_kwargs = _handle_legacy_positional_args(auth_method, auth_kwargs)
         _validate_auth_method_arg(auth_method)
 
         # Resolve auth ONCE and share across all sub-clients
