@@ -69,7 +69,7 @@ class CredentialManager:
         try:
             keyring.get_keyring()
             return True
-        except Exception:
+        except (RuntimeError, AttributeError, ImportError):
             return False
 
     def store_credentials(
@@ -106,7 +106,7 @@ class CredentialManager:
             if auth_method == 'legacy':
                 return bool(creds.get('api_key') and creds.get('email'))
             return bool(creds.get('username') and creds.get('password'))
-        except Exception:
+        except (AuthenticationError, OSError, RuntimeError):
             return False
 
     def get_stored_email(self) -> Optional[str]:
@@ -114,7 +114,7 @@ class CredentialManager:
         try:
             creds = self.get_credentials()
             return creds.get('email') or creds.get('username')
-        except Exception:
+        except (AuthenticationError, OSError, RuntimeError):
             return None
 
     def get_token_file(self) -> str:
