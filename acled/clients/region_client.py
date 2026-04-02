@@ -80,11 +80,11 @@ class RegionClient(BaseHttpClient):
                 params['last_event_date'] = last_event_date
         if event_count is not None:
             params['event_count'] = str(event_count)
-        if export_type is not None:
-            if isinstance(export_type, ExportType):
-                params['export_type'] = export_type.value
+        if response_format is not None:
+            if isinstance(response_format, ResponseFormat):
+                params['_format'] = response_format.value
             else:
-                params['export_type'] = export_type
+                params['_format'] = response_format
         params['limit'] = str(limit) if limit else '50'
         if page is not None:
             params['page'] = str(page)
