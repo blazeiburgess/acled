@@ -190,11 +190,11 @@ class TestBaseCommand(unittest.TestCase):
         command.add_common_filters(parser)
         
         # Test parsing with common arguments
-        args = parser.parse_args(['--limit', '100', '--page', '2', '--export-type', 'csv'])
-        
+        args = parser.parse_args(['--limit', '100', '--page', '2', '--format', 'csv'])
+
         self.assertEqual(args.limit, 100)
         self.assertEqual(args.page, 2)
-        self.assertEqual(args.export_type, 'csv')
+        self.assertEqual(args.response_format, 'csv')
     
     def test_add_common_filters_defaults(self):
         """Test add_common_filters sets correct defaults."""
@@ -221,7 +221,7 @@ class TestBaseCommand(unittest.TestCase):
         
         self.assertEqual(args.limit, 50)  # Default
         self.assertIsNone(args.page)  # No default
-        self.assertEqual(args.export_type, 'json')  # Default
+        self.assertEqual(args.response_format, 'json')  # Default
 
 
 if __name__ == '__main__':
