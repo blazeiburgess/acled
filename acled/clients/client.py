@@ -17,7 +17,7 @@ from acled.clients.country_client import CountryClient
 from acled.clients.deleted_client import DeletedClient
 from acled.clients.region_client import RegionClient
 from acled.models import AcledEvent, Actor, ActorType, CastForecast, DeletedEvent, Country, Region
-from acled.models.enums import ExportType
+from acled.models.enums import ResponseFormat, ExportType
 from acled.auth import AuthMethod, AuthFactory
 from acled.clients.base_http_client import _validate_auth_method_arg, _handle_legacy_positional_args
 
@@ -136,7 +136,8 @@ class AcledClient:
         tags: Optional[str] = None,
         timestamp: Optional[Union[int, str, date]] = None,
         fields: Optional[str] = None,
-        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        export_type: Optional[str] = None,
+        response_format: Optional[Union[str, ResponseFormat]] = ResponseFormat.JSON,
         limit: int = 50,
         page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
@@ -177,8 +178,9 @@ class AcledClient:
             tags (Optional[str]): Filter by tags (supports LIKE).
             timestamp (Optional[Union[int, str, date]]): Filter by timestamp (>= value).
             fields (Optional[str]): Pipe-separated list of fields to return (e.g. 'country|event_date|fatalities').
-            export_type (Optional[Union[str, ExportType]]): Specify the export type ('json', 'xml', 'csv', etc.).
-            limit (int): Number of records to retrieve (default is 50).
+            export_type (Optional[str]): Data structure format — 'dyadic' (default) or 'monadic'.
+            response_format (Optional[Union[str, ResponseFormat]]): Response serialization format ('json', 'csv', etc.).
+            limit (int): Number of records to retrieve (default: 50; API default is 5000).
             page (Optional[int]): Page number for pagination.
             query_params (Optional[Dict[str, Any]]): Additional query parameters (e.g., to use '_where' suffix).
 
@@ -228,6 +230,7 @@ class AcledClient:
             timestamp=timestamp,
             fields=fields,
             export_type=export_type,
+            response_format=response_format,
             limit=limit,
             page=page,
             query_params=query_params,
@@ -249,7 +252,7 @@ class AcledClient:
         vac_observed: Optional[int] = None,
         timestamp: Optional[Union[int, str, date]] = None,
         fields: Optional[str] = None,
-        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        response_format: Optional[Union[str, ResponseFormat]] = ResponseFormat.JSON,
         limit: int = 50,
         page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
@@ -272,7 +275,7 @@ class AcledClient:
             vac_observed (Optional[int]): Filter by observed violence against civilians events.
             timestamp (Optional[Union[int, str, date]]): Filter by timestamp (>= value).
             fields (Optional[str]): Pipe-separated list of fields to return (e.g. 'country|year|total_forecast').
-            export_type (Optional[Union[str, ExportType]]): Specify the export type ('json', 'xml', 'csv', etc.).
+            response_format (Optional[Union[str, ResponseFormat]]): Response serialization format ('json', 'csv', etc.).
             limit (int): Number of records to retrieve (default is 50).
             page (Optional[int]): Page number for pagination.
             query_params (Optional[Dict[str, Any]]): Additional query parameters (e.g., to use '_where' suffix).
@@ -304,7 +307,7 @@ class AcledClient:
             vac_observed=vac_observed,
             timestamp=timestamp,
             fields=fields,
-            export_type=export_type,
+            response_format=response_format,
             limit=limit,
             page=page,
             query_params=query_params,
@@ -314,7 +317,7 @@ class AcledClient:
         self,
         event_id_cnty: Optional[str] = None,
         deleted_timestamp: Optional[Union[int, str, date]] = None,
-        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        response_format: Optional[Union[str, ResponseFormat]] = ResponseFormat.JSON,
         limit: int = 50,
         page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
@@ -325,7 +328,7 @@ class AcledClient:
         Args:
             event_id_cnty (Optional[str]): Filter by event ID (supports LIKE).
             deleted_timestamp (Optional[Union[int, str, date]]): Filter by deletion timestamp (>= value).
-            export_type (Optional[Union[str, ExportType]]): Specify the export type ('json', 'xml', 'csv', etc.).
+            response_format (Optional[Union[str, ResponseFormat]]): Response serialization format ('json', 'csv', etc.).
             limit (int): Number of records to retrieve (default is 50).
             page (Optional[int]): Page number for pagination.
             query_params (Optional[Dict[str, Any]]): Additional query parameters (e.g., to use '_where' suffix).
@@ -345,7 +348,7 @@ class AcledClient:
         return self._deleted_client.get_data(
             event_id_cnty=event_id_cnty,
             deleted_timestamp=deleted_timestamp,
-            export_type=export_type,
+            response_format=response_format,
             limit=limit,
             page=page,
             query_params=query_params,
@@ -357,7 +360,7 @@ class AcledClient:
         first_event_date: Optional[Union[str, date]] = None,
         last_event_date: Optional[Union[str, date]] = None,
         event_count: Optional[int] = None,
-        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        response_format: Optional[Union[str, ResponseFormat]] = ResponseFormat.JSON,
         limit: int = 50,
         page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
@@ -370,7 +373,7 @@ class AcledClient:
             first_event_date (Optional[Union[str, date]]): Filter by first event date (format 'yyyy-mm-dd').
             last_event_date (Optional[Union[str, date]]): Filter by last event date (format 'yyyy-mm-dd').
             event_count (Optional[int]): Filter by event count.
-            export_type (Optional[Union[str, ExportType]]): Specify the export type ('json', 'xml', 'csv', etc.).
+            response_format (Optional[Union[str, ResponseFormat]]): Response serialization format ('json', 'csv', etc.).
             limit (int): Number of records to retrieve (default is 50).
             page (Optional[int]): Page number for pagination.
             query_params (Optional[Dict[str, Any]]): Additional query parameters.
@@ -392,7 +395,7 @@ class AcledClient:
             first_event_date=first_event_date,
             last_event_date=last_event_date,
             event_count=event_count,
-            export_type=export_type,
+            response_format=response_format,
             limit=limit,
             page=page,
             query_params=query_params,
@@ -405,7 +408,7 @@ class AcledClient:
         first_event_date: Optional[Union[str, date]] = None,
         last_event_date: Optional[Union[str, date]] = None,
         event_count: Optional[int] = None,
-        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        response_format: Optional[Union[str, ResponseFormat]] = ResponseFormat.JSON,
         limit: int = 50,
         page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
@@ -419,7 +422,7 @@ class AcledClient:
             first_event_date (Optional[Union[str, date]]): Filter by first event date (format 'yyyy-mm-dd').
             last_event_date (Optional[Union[str, date]]): Filter by last event date (format 'yyyy-mm-dd').
             event_count (Optional[int]): Filter by event count (default query is >=).
-            export_type (Optional[Union[str, ExportType]]): Specify the export type ('json', 'xml', 'csv', etc.).
+            response_format (Optional[Union[str, ResponseFormat]]): Response serialization format ('json', 'csv', etc.).
             limit (int): Number of records to retrieve (default is 50).
             page (Optional[int]): Page number for pagination.
             query_params (Optional[Dict[str, Any]]): Additional query parameters.
@@ -442,7 +445,7 @@ class AcledClient:
             first_event_date=first_event_date,
             last_event_date=last_event_date,
             event_count=event_count,
-            export_type=export_type,
+            response_format=response_format,
             limit=limit,
             page=page,
             query_params=query_params,
@@ -456,7 +459,7 @@ class AcledClient:
         first_event_date: Optional[Union[str, date]] = None,
         last_event_date: Optional[Union[str, date]] = None,
         event_count: Optional[int] = None,
-        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        response_format: Optional[Union[str, ResponseFormat]] = ResponseFormat.JSON,
         limit: int = 50,
         page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
@@ -471,7 +474,7 @@ class AcledClient:
             first_event_date (Optional[Union[str, date]]): Filter by first event date (format 'yyyy-mm-dd').
             last_event_date (Optional[Union[str, date]]): Filter by last event date (format 'yyyy-mm-dd').
             event_count (Optional[int]): Filter by event count (default query is >=).
-            export_type (Optional[Union[str, ExportType]]): Specify the export type ('json', 'xml', 'csv', etc.).
+            response_format (Optional[Union[str, ResponseFormat]]): Response serialization format ('json', 'csv', etc.).
             limit (int): Number of records to retrieve (default is 50).
             page (Optional[int]): Page number for pagination.
             query_params (Optional[Dict[str, Any]]): Additional query parameters.
@@ -495,7 +498,7 @@ class AcledClient:
             first_event_date=first_event_date,
             last_event_date=last_event_date,
             event_count=event_count,
-            export_type=export_type,
+            response_format=response_format,
             limit=limit,
             page=page,
             query_params=query_params,
@@ -508,7 +511,7 @@ class AcledClient:
         first_event_date: Optional[Union[str, date]] = None,
         last_event_date: Optional[Union[str, date]] = None,
         event_count: Optional[int] = None,
-        export_type: Optional[Union[str, ExportType]] = ExportType.JSON,
+        response_format: Optional[Union[str, ResponseFormat]] = ResponseFormat.JSON,
         limit: int = 50,
         page: Optional[int] = None,
         query_params: Optional[Dict[str, Any]] = None,
@@ -522,7 +525,7 @@ class AcledClient:
             first_event_date (Optional[Union[str, date]]): Filter by first event date (format 'yyyy-mm-dd').
             last_event_date (Optional[Union[str, date]]): Filter by last event date (format 'yyyy-mm-dd').
             event_count (Optional[int]): Filter by event count (default query is >=).
-            export_type (Optional[Union[str, ExportType]]): Specify the export type ('json', 'xml', 'csv', etc.).
+            response_format (Optional[Union[str, ResponseFormat]]): Response serialization format ('json', 'csv', etc.).
             limit (int): Number of records to retrieve (default is 50).
             page (Optional[int]): Page number for pagination.
             query_params (Optional[Dict[str, Any]]): Additional query parameters.
@@ -545,7 +548,7 @@ class AcledClient:
             first_event_date=first_event_date,
             last_event_date=last_event_date,
             event_count=event_count,
-            export_type=export_type,
+            response_format=response_format,
             limit=limit,
             page=page,
             query_params=query_params,
