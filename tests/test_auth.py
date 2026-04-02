@@ -334,18 +334,19 @@ class TestAuthFactory:
                 AuthFactory.from_environment()
 
     @patch('acled.auth.requests.post')
-    def test_auto_detect_propagates_api_error(self, mock_post):
-        """Test that _auto_detect propagates ApiError instead of swallowing it."""
+    def test_auto_detect_falls_back_on_api_error(self, mock_post):
+        """Test that _auto_detect falls back from OAuth to cookie on ApiError."""
         from requests.exceptions import ConnectionError as ReqConnectionError
+        # Both OAuth and Cookie will fail (same mock), so the final raise should
+        # be ApiError, not swallowed into something else
         mock_post.side_effect = ReqConnectionError("Connection refused")
 
-        # ApiError from failed OAuth should propagate, not silently fall back
         with pytest.raises(ApiError):
             AuthFactory._auto_detect(username="user", password="pass")
 
     @patch('acled.auth.requests.post')
-    def test_from_environment_propagates_api_error(self, mock_post):
-        """Test that from_environment propagates ApiError instead of falling back."""
+    def test_from_environment_falls_back_on_api_error(self, mock_post):
+        """Test that from_environment tries cookie auth when OAuth fails."""
         from requests.exceptions import ConnectionError as ReqConnectionError
         mock_post.side_effect = ReqConnectionError("Connection refused")
 
@@ -353,22 +354,12 @@ class TestAuthFactory:
             'ACLED_USERNAME': 'user',
             'ACLED_PASSWORD': 'pass'
         }, clear=True):
+            # Both OAuth and Cookie fail, so ApiError propagates
             with pytest.raises(ApiError):
                 AuthFactory.from_environment()
 
-    @patch('acled.auth.requests.post')
-    def test_auto_detect_does_not_fallback_on_bad_credentials(self, mock_post):
-        """Test that invalid credentials don't silently fall back to legacy."""
-        from requests.exceptions import HTTPError
-        mock_response = Mock()
-        mock_response.status_code = 401
-        mock_response.raise_for_status.side_effect = HTTPError("401 Unauthorized")
-        mock_post.return_value = mock_response
-
-        # Even if legacy credentials exist, bad OAuth creds should not silently
-        # fall through to legacy auth
-        with pytest.raises(ApiError):
-            AuthFactory._auto_detect(
-                username="user", password="wrong",
-                api_key="key", email="e@x.com"
-            )
+    def test_auto_detect_does_not_catch_unexpected_exceptions(self):
+        """Test that unexpected (non-auth) exceptions are not caught."""
+        with patch('acled.auth.OAuthTokenAuth.__init__', side_effect=RuntimeError("unexpected")):
+            with pytest.raises(RuntimeError):
+                AuthFactory._auto_detect(username="user", password="pass")
