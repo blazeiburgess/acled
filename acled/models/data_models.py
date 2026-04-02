@@ -84,6 +84,28 @@ class Region(TypedDict, total=False):
     last_event_date: datetime.date
     event_count: int
 
+class CastForecast(TypedDict, total=False):
+    """TypedDict representing a CAST (Conflict Alert System) forecast.
+
+    Contains forecast and observed event counts for a given country/admin1
+    region and time period, broken down by event type (battles, explosions/
+    remote violence, violence against civilians).
+    """
+    country: str
+    admin1: str
+    month: str
+    year: int
+    total_forecast: int
+    battles_forecast: int
+    erv_forecast: int
+    vac_forecast: int
+    total_observed: int
+    battles_observed: int
+    erv_observed: int
+    vac_observed: int
+    timestamp: int
+
+
 class ActorType(TypedDict, total=False):
     """TypedDict representing a type of actor in the ACLED database.
 
