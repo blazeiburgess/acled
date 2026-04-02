@@ -120,15 +120,14 @@ class CLIConfig:
                         password=creds.get('password'),
                         token_file=credential_manager.get_token_file()
                     )
-                elif auth_method == 'cookie':
+                if auth_method == 'cookie':
                     return AuthFactory.create_auth(
                         'cookie',
                         username=creds.get('username'),
                         password=creds.get('password')
                     )
-                else:
-                    # For legacy, we'll use api_key/email properties
-                    return None
+                # For legacy, we'll use api_key/email properties
+                return None
         except AuthenticationError:
             pass
 
