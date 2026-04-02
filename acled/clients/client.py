@@ -9,6 +9,8 @@ This simplifies usage and provides a consistent entry point for all API interact
 from typing import Optional, Any, Dict, List, Union
 from datetime import date
 
+import requests
+
 from acled.clients.acled_data_client import AcledDataClient
 from acled.clients.actor_client import ActorClient
 from acled.clients.actor_type_client import ActorTypeClient
@@ -93,13 +95,27 @@ class AcledClient:
         else:
             auth = AuthFactory.from_environment()
 
-        self._acled_data_client = AcledDataClient(auth_method=auth)
-        self._actor_client = ActorClient(auth_method=auth)
-        self._cast_client = CastClient(auth_method=auth)
-        self._country_client = CountryClient(auth_method=auth)
-        self._deleted_client = DeletedClient(auth_method=auth)
-        self._region_client = RegionClient(auth_method=auth)
-        self._actor_type_client = ActorTypeClient(auth_method=auth)
+        self._session = requests.Session()
+        self._session.headers.update({'Content-Type': 'application/json'})
+
+        self._acled_data_client = AcledDataClient(auth_method=auth, session=self._session)
+        self._actor_client = ActorClient(auth_method=auth, session=self._session)
+        self._cast_client = CastClient(auth_method=auth, session=self._session)
+        self._country_client = CountryClient(auth_method=auth, session=self._session)
+        self._deleted_client = DeletedClient(auth_method=auth, session=self._session)
+        self._region_client = RegionClient(auth_method=auth, session=self._session)
+        self._actor_type_client = ActorTypeClient(auth_method=auth, session=self._session)
+
+    def close(self) -> None:
+        """Close the shared HTTP session and release resources."""
+        self._session.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+        return False
 
 
     def get_data(
