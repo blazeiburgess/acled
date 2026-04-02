@@ -70,13 +70,19 @@ class ActorClient(BaseHttpClient):
             'first_event_date': first_event_date,
             'last_event_date': last_event_date,
             'event_count': event_count,
-            'export_type': export_type,
             'limit': limit,
             'page': page
         }
 
         # Remove None values
         params = {k: v for k, v in params.items() if v is not None}
+
+        # Map response_format to _format (the actual API parameter)
+        if response_format is not None:
+            if isinstance(response_format, ResponseFormat):
+                params['_format'] = response_format.value
+            else:
+                params['_format'] = response_format
 
         # Add any additional query parameters
         if query_params:
