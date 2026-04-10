@@ -10,6 +10,8 @@ modern authentication (OAuth/Cookie) over legacy when possible.
 """
 
 import os
+import platform
+import tempfile
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
@@ -38,7 +40,6 @@ class AuthMethod(ABC):
         Returns:
             Modified parameters dictionary
         """
-        pass
 
     @abstractmethod
     def refresh_if_needed(self, session: requests.Session) -> None:
@@ -47,7 +48,6 @@ class AuthMethod(ABC):
         Args:
             session: The requests session to potentially update
         """
-        pass
 
     @abstractmethod
     def force_refresh(self, session: requests.Session) -> None:
@@ -59,7 +59,6 @@ class AuthMethod(ABC):
         Args:
             session: The requests session to update with new credentials
         """
-        pass
 
     @abstractmethod
     def is_authenticated(self) -> bool:
@@ -68,7 +67,6 @@ class AuthMethod(ABC):
         Returns:
             True if authenticated and valid, False otherwise
         """
-        pass
 
 
 class LegacyKeyEmailAuth(AuthMethod):
@@ -126,11 +124,9 @@ class LegacyKeyEmailAuth(AuthMethod):
 
     def refresh_if_needed(self, session: requests.Session) -> None:
         """No refresh needed for legacy authentication."""
-        pass
 
     def force_refresh(self, session: requests.Session) -> None:
         """No refresh possible for legacy authentication (static credentials)."""
-        pass
 
     def is_authenticated(self) -> bool:
         """Check if API key and email are present.
@@ -197,9 +193,8 @@ class OAuthTokenAuth(AuthMethod):
             try:
                 self.load_tokens(self.token_file)
                 self.log.info("Loaded existing OAuth tokens from file")
-            except Exception:
-                # File doesn't exist or is invalid, will get new tokens
-                pass
+            except (FileNotFoundError, json.JSONDecodeError, PermissionError, OSError) as e:
+                self.log.debug("Could not load tokens from %s: %s", self.token_file, e)
 
         # If we don't have valid tokens, obtain them
         if not self.is_authenticated():
@@ -361,7 +356,7 @@ class OAuthTokenAuth(AuthMethod):
         if self.refresh_token:
             try:
                 self._refresh_access_token()
-            except Exception:
+            except (ApiError, RequestException):
                 if self.username and self.password:
                     self._obtain_token()
                 else:
@@ -403,8 +398,6 @@ class OAuthTokenAuth(AuthMethod):
         Args:
             filepath: Path to save tokens to
         """
-        import tempfile
-        import platform
 
         token_data = {
             "access_token": self.access_token,
@@ -423,7 +416,7 @@ class OAuthTokenAuth(AuthMethod):
         dirpath = os.path.dirname(os.path.abspath(filepath))
         fd, tmp_path = tempfile.mkstemp(dir=dirpath, suffix='.tmp')
         try:
-            with os.fdopen(fd, 'w') as f:
+            with os.fdopen(fd, 'w', encoding='utf-8') as f:
                 json.dump(token_data, f, indent=2)
             # Set restrictive permissions before rename (Unix)
             if platform.system() != "Windows":
@@ -445,7 +438,7 @@ class OAuthTokenAuth(AuthMethod):
         Args:
             filepath: Path to load tokens from
         """
-        with open(filepath, 'r') as f:
+        with open(filepath, 'r', encoding='utf-8') as f:
             token_data = json.load(f)
 
         self.access_token = token_data.get("access_token")
@@ -650,22 +643,21 @@ class AuthFactory:
                 api_key=kwargs.get("api_key"),
                 email=kwargs.get("email")
             )
-        elif method == "oauth":
+        if method == "oauth":
             return OAuthTokenAuth(
                 username=kwargs.get("username") or kwargs.get("email"),
                 password=kwargs.get("password"),
                 token_file=kwargs.get("token_file")
             )
-        elif method == "cookie":
+        if method == "cookie":
             return CookieAuth(
                 username=kwargs.get("username") or kwargs.get("email"),
                 password=kwargs.get("password")
             )
-        elif method == "auto":
+        if method == "auto":
             # Auto-detect best method based on available credentials
             return AuthFactory._auto_detect(**kwargs)
-        else:
-            raise ValueError(f"Unknown authentication method: {method}")
+        raise ValueError(f"Unknown authentication method: {method}")
 
     @staticmethod
     def _auto_detect(**kwargs) -> AuthMethod:
@@ -693,21 +685,38 @@ class AuthFactory:
 
         # Prefer OAuth if we have username/password
         if username and password:
+            last_error: Optional[Exception] = None
             try:
                 return OAuthTokenAuth(
                     username=username,
                     password=password,
                     token_file=kwargs.get("token_file")
                 )
-            except (AcledMissingAuthError, ApiError):
-                # OAuth failed (missing creds, bad creds, or endpoint down) — try cookie
-                try:
-                    return CookieAuth(username=username, password=password)
-                except (AcledMissingAuthError, ApiError):
-                    # Cookie also failed — fall back to legacy if available
-                    if api_key and email:
-                        return LegacyKeyEmailAuth(api_key=api_key, email=email)
+            except AcledMissingAuthError:
+                pass  # Missing creds — try next method
+            except ApiError as e:
+                if getattr(e, 'status_code', None) in (401, 403):
+                    raise  # Bad credentials — don't silently try next method
+                last_error = e
+
+            try:
+                return CookieAuth(username=username, password=password)
+            except AcledMissingAuthError:
+                pass
+            except ApiError as e:
+                if getattr(e, 'status_code', None) in (401, 403):
                     raise
+                last_error = e
+
+            # Both failed — fall back to legacy if available
+            if api_key and email:
+                return LegacyKeyEmailAuth(api_key=api_key, email=email)
+            if last_error is not None:
+                raise last_error
+            raise AcledMissingAuthError(
+                "OAuth and Cookie authentication failed. "
+                "No legacy credentials available as fallback."
+            )
 
         # Use legacy if only API key/email available
         elif api_key and email:
@@ -757,29 +766,47 @@ class AuthFactory:
         # Auto-detect based on available environment variables
         # Priority: OAuth/Cookie > Legacy
         if username and password:
-            # Try OAuth first, fall back to cookie only if credentials are missing
-            # (not if the auth endpoint is down or credentials are invalid)
+            # Try OAuth first, fall back to cookie only if the auth method
+            # is unavailable (not if credentials are invalid)
+            last_error: Optional[Exception] = None
             try:
                 return AuthFactory.create_auth(
                     "oauth",
                     username=username,
                     password=password
                 )
-            except (AcledMissingAuthError, ApiError):
-                try:
-                    return AuthFactory.create_auth(
-                        "cookie",
-                        username=username,
-                        password=password
-                    )
-                except (AcledMissingAuthError, ApiError):
-                    if api_key and email:
-                        return AuthFactory.create_auth(
-                            "legacy",
-                            api_key=api_key,
-                            email=email
-                        )
+            except AcledMissingAuthError:
+                pass
+            except ApiError as e:
+                if getattr(e, 'status_code', None) in (401, 403):
                     raise
+                last_error = e
+
+            try:
+                return AuthFactory.create_auth(
+                    "cookie",
+                    username=username,
+                    password=password
+                )
+            except AcledMissingAuthError:
+                pass
+            except ApiError as e:
+                if getattr(e, 'status_code', None) in (401, 403):
+                    raise
+                last_error = e
+
+            if api_key and email:
+                return AuthFactory.create_auth(
+                    "legacy",
+                    api_key=api_key,
+                    email=email
+                )
+            if last_error is not None:
+                raise last_error
+            raise AcledMissingAuthError(
+                "OAuth and Cookie authentication failed from environment. "
+                "No legacy credentials available as fallback."
+            )
 
         elif api_key and email:
             return AuthFactory.create_auth(

@@ -1,11 +1,12 @@
 """Secure credential storage utilities."""
 
+import getpass
 import json
 import logging
 import os
 import platform
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 try:
     import keyring
@@ -68,7 +69,7 @@ class CredentialManager:
         try:
             keyring.get_keyring()
             return True
-        except Exception:
+        except (RuntimeError, AttributeError, ImportError):
             return False
 
     def store_credentials(
@@ -95,8 +96,7 @@ class CredentialManager:
         """Retrieve stored credentials."""
         if self.use_keyring:
             return self._get_from_keyring()
-        else:
-            return self._get_from_encrypted_file()
+        return self._get_from_encrypted_file()
 
     def has_stored_credentials(self) -> bool:
         """Check if credentials are stored."""
@@ -105,9 +105,8 @@ class CredentialManager:
             auth_method = creds.get('auth_method', 'legacy')
             if auth_method == 'legacy':
                 return bool(creds.get('api_key') and creds.get('email'))
-            else:  # oauth
-                return bool(creds.get('username') and creds.get('password'))
-        except Exception:
+            return bool(creds.get('username') and creds.get('password'))
+        except (AuthenticationError, OSError, RuntimeError):
             return False
 
     def get_stored_email(self) -> Optional[str]:
@@ -115,7 +114,7 @@ class CredentialManager:
         try:
             creds = self.get_credentials()
             return creds.get('email') or creds.get('username')
-        except Exception:
+        except (AuthenticationError, OSError, RuntimeError):
             return None
 
     def get_token_file(self) -> str:
@@ -239,7 +238,6 @@ class CredentialManager:
     def _get_machine_identifier(self) -> str:
         """Get a machine-specific identifier for encryption."""
         # Use platform and user info as basis for machine-specific key
-        import getpass
         machine_id = f"{platform.node()}-{platform.system()}-{getpass.getuser()}"
         return machine_id[:32].ljust(32, '0')  # Ensure consistent length
 

@@ -11,18 +11,18 @@ from os import environ
 import time
 import random
 from datetime import date, datetime
+import warnings
 
 import requests
 from requests.exceptions import RequestException, Timeout, ConnectionError, HTTPError
 
 from acled.exceptions import (
-    AcledMissingAuthError, ApiError, NetworkError, TimeoutError,
+    ApiError, AcledMissingAuthError, NetworkError, TimeoutError,
     RetryError, RateLimitError, ServerError, ClientError
 )
 from acled.log import AcledLogger
 from acled.auth import AuthMethod, AuthFactory, LegacyKeyEmailAuth
-
-import warnings
+from acled.models.enums import ResponseFormat
 
 T = TypeVar('T')
 
@@ -74,7 +74,7 @@ def _handle_legacy_positional_args(auth_method, auth_kwargs):
     return auth_method, auth_kwargs
 
 
-class BaseHttpClient(object):
+class BaseHttpClient:
     """
     A base HTTP client that provides basic GET and POST request functionality.
     """
@@ -85,12 +85,13 @@ class BaseHttpClient(object):
     RETRY_STATUS_CODES = [429, 500, 502, 503, 504]  # Rate limit and server errors
     DEFAULT_TIMEOUT = int(environ.get("ACLED_REQUEST_TIMEOUT", "30"))  # seconds
 
-    def __init__(self, auth_method: Optional[Union[str, AuthMethod]] = None, _legacy_email: Optional[str] = None, **auth_kwargs):
+    def __init__(self, auth_method: Optional[Union[str, AuthMethod]] = None, _legacy_email: Optional[str] = None, *, session: Optional[requests.Session] = None, **auth_kwargs):
         """Initialize the base HTTP client with authentication.
 
         Args:
             auth_method: Authentication method (AuthMethod instance, method name, or None for auto)
             _legacy_email: Deprecated positional email arg for backward compatibility
+            session: Optional shared requests.Session (if not provided, a new one is created)
             **auth_kwargs: Authentication parameters (username, password, api_key, email, etc.)
         """
         self.log = AcledLogger().get_logger()
@@ -108,7 +109,7 @@ class BaseHttpClient(object):
             self.auth = AuthFactory.create_auth("auto", **auth_kwargs)
         else:
             self.auth = AuthFactory.from_environment()
-        
+
         # Legacy attributes for backward compatibility
         if isinstance(self.auth, LegacyKeyEmailAuth):
             self.api_key = self.auth.api_key
@@ -116,9 +117,19 @@ class BaseHttpClient(object):
         else:
             self.api_key = None
             self.email = None
-        
-        self.session = requests.Session()
-        self.session.headers.update({'Content-Type': 'application/json'})
+
+        if session is not None:
+            self.session = session
+            self._owns_session = False
+        else:
+            self.session = requests.Session()
+            self.session.headers.update({'Content-Type': 'application/json'})
+            self._owns_session = True
+
+    def close(self) -> None:
+        """Close the HTTP session if this client owns it."""
+        if self._owns_session:
+            self.session.close()
 
     def process_params(self, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -184,13 +195,13 @@ class BaseHttpClient(object):
         """
         url = f"{self.BASE_URL}{endpoint}"
         timeout = timeout or self.DEFAULT_TIMEOUT
-        
+
         # Refresh authentication if needed (non-fatal — will retry via 401 path)
         try:
             self.auth.refresh_if_needed(self.session)
-        except Exception as e:
+        except (ApiError, RequestException, AcledMissingAuthError) as e:
             self.log.warning("Pre-request auth refresh failed: %s", str(e))
-        
+
         processed_params = self.process_params(params) if method.lower() == 'get' else None
         processed_data = self.process_params(data) if method.lower() == 'post' else None
 
@@ -249,7 +260,7 @@ class BaseHttpClient(object):
                         self.auth.force_refresh(self.session)
                         processed_params = self.process_params(params) if method.lower() == 'get' else None
                         processed_data = self.process_params(data) if method.lower() == 'post' else None
-                    except Exception as e:
+                    except (ApiError, RequestException, AcledMissingAuthError) as e:
                         self.log.warning("Auth refresh failed: %s", str(e))
                         last_exception = ApiError(f"Auth refresh failed: {str(e)}")
                     auth_refreshed = True
@@ -275,11 +286,11 @@ class BaseHttpClient(object):
                 status_code = getattr(getattr(e, "response", None), "status_code", None)
                 self.log.error("HTTP error: %s (status code: %s)", str(e), status_code)
                 if status_code and 500 <= status_code < 600:
-                    last_exception = ServerError(f"Server error ({status_code}): {str(e)}")
+                    last_exception = ServerError(f"Server error ({status_code}): {str(e)}", status_code=status_code)
                 elif status_code and 400 <= status_code < 500:
-                    raise ClientError(f"Client error ({status_code}): {str(e)}") from e
+                    raise ClientError(f"Client error ({status_code}): {str(e)}", status_code=status_code) from e
                 else:
-                    raise ApiError(f"HTTP error ({status_code}): {str(e)}") from e
+                    raise ApiError(f"HTTP error ({status_code}): {str(e)}", status_code=status_code) from e
             except RequestException as e:
                 self.log.error("Request error: %s", str(e))
                 last_exception = ApiError(f"Request error: {str(e)}")
@@ -294,6 +305,28 @@ class BaseHttpClient(object):
             raise RetryError(f"Max retries ({self.MAX_RETRIES}) exceeded. Last error: {str(last_exception)}")
         raise RetryError(f"Max retries ({self.MAX_RETRIES}) exceeded.")
 
+    @staticmethod
+    def _validate_response_format(params: Optional[Dict[str, Any]]) -> None:
+        """Validate that the response format is JSON (the only supported format).
+
+        Raises:
+            ValueError: If a non-JSON response format is requested
+        """
+        if params is None:
+            return
+        fmt = params.get('response_format')
+        if fmt is None:
+            return
+        if isinstance(fmt, ResponseFormat):
+            fmt_val = fmt.value
+        else:
+            fmt_val = str(fmt).lower()
+        if fmt_val != 'json':
+            raise ValueError(
+                f"Unsupported response_format '{fmt}'. "
+                "Only JSON format is supported."
+            )
+
     def _get(
             self, endpoint: str, params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
@@ -307,6 +340,7 @@ class BaseHttpClient(object):
         Returns:
             API response as dictionary
         """
+        self._validate_response_format(params)
         return self._request_with_retries('get', endpoint, params=params)
 
     def _post(

@@ -6,12 +6,13 @@ It allows filtering by various criteria such as actor type ID, name, and event d
 """
 
 from typing import Any, Dict, List, Optional, Union
-import requests
 from datetime import datetime, date
+
+import requests
 
 from acled.clients.base_http_client import BaseHttpClient
 from acled.models import ActorType
-from acled.models.enums import ResponseFormat, ExportType
+from acled.models.enums import ResponseFormat
 from acled.exceptions import ApiError
 
 class ActorTypeClient(BaseHttpClient):

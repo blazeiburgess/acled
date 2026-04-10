@@ -14,9 +14,9 @@ setup(
     ],
     classifiers=[
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.10",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
 )

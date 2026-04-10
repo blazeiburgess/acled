@@ -7,6 +7,7 @@ with configurable log levels and a consistent log format.
 import logging
 import os
 import sys
+import threading
 from logging import Logger
 
 
@@ -18,12 +19,15 @@ class AcledLogger:
     be configured via the 'LOG_LEVEL' environment variable.
     """
     _instance = None
+    _lock = threading.Lock()
     logger: Logger
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
-            cls._instance = super().__new__(cls, *args, **kwargs)
-            cls._instance._initialize()
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls, *args, **kwargs)
+                    cls._instance._initialize()
         return cls._instance
 
     def _initialize(self):
@@ -31,13 +35,14 @@ class AcledLogger:
         self.logger = logging.getLogger("acled_logger")
         self.logger.setLevel(getattr(logging, log_level, logging.WARNING))
 
-        handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - '
-            'Thread:%(threadName)s(Process:%(processName)s) - %(message)s'
-        )
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
+        if not self.logger.handlers:
+            handler = logging.StreamHandler(sys.stdout)
+            formatter = logging.Formatter(
+                '%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - '
+                'Thread:%(threadName)s(Process:%(processName)s) - %(message)s'
+            )
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
 
     def get_logger(self) -> Logger:
         """Returns the configured logger instance.

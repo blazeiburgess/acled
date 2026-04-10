@@ -375,12 +375,13 @@ class TestAuthCommand(unittest.TestCase):
         
         # Mock client that raises exception
         mock_client = Mock()
-        mock_client.get_data.side_effect = Exception("Invalid credentials")
+        from acled.exceptions import ApiError
+        mock_client.get_data.side_effect = ApiError("Invalid credentials")
         mock_client_class.return_value = mock_client
-        
+
         with patch('acled.cli.commands.auth.CredentialManager'):
             command = AuthCommand(self.mock_config)
-        
+
         result = command._validate_legacy_credentials('invalid_key', 'test@example.com')
         
         self.assertFalse(result)
@@ -393,7 +394,8 @@ class TestAuthCommand(unittest.TestCase):
         from acled.cli.commands.auth import AuthCommand
 
         # OAuth constructor raises
-        mock_oauth_class.side_effect = Exception("OAuth failed")
+        from acled.exceptions import ApiError
+        mock_oauth_class.side_effect = ApiError("OAuth failed")
 
         # Cookie succeeds
         mock_client = Mock()
@@ -403,7 +405,7 @@ class TestAuthCommand(unittest.TestCase):
         with patch('acled.cli.commands.auth.CredentialManager'):
             command = AuthCommand(self.mock_config)
 
-        with patch('acled.auth.CookieAuth') as mock_cookie_class:
+        with patch('acled.cli.commands.auth.CookieAuth') as mock_cookie_class:
             mock_cookie_auth = Mock()
             mock_cookie_class.return_value = mock_cookie_auth
             result = command._validate_modern_credentials('user', 'pass')
@@ -436,7 +438,8 @@ class TestAuthCommand(unittest.TestCase):
         """Test that login stores auth_method='cookie' when only cookie succeeds."""
         from acled.cli.commands.auth import AuthCommand
 
-        mock_oauth_class.side_effect = Exception("OAuth failed")
+        from acled.exceptions import ApiError
+        mock_oauth_class.side_effect = ApiError("OAuth failed")
 
         mock_client = Mock()
         mock_client.get_data.return_value = [{"test": "data"}]
@@ -456,7 +459,7 @@ class TestAuthCommand(unittest.TestCase):
         args.api_key = None
         args.force = False
 
-        with patch('acled.auth.CookieAuth') as mock_cookie_class:
+        with patch('acled.cli.commands.auth.CookieAuth') as mock_cookie_class:
             mock_cookie_class.return_value = Mock()
             with patch('builtins.print'):
                 result = command._handle_login(args)
