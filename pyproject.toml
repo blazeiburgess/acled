@@ -24,7 +24,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "requests>=2.33.0",
+    "requests>=2.33.1",
 ]
 
 [project.optional-dependencies]
@@ -37,13 +37,13 @@ cli = [
     "tabulate>=0.10.0",  # For table formatting
     "colorama>=0.4.6",  # For colored output (cross-platform)
     "cryptography>=46.0.0",  # For secure credential storage
-    "keyring>=25.0.0",  # Cross-platform secure storage
+    "keyring>=25.7.0",  # Cross-platform secure storage
 ]
 all = [
     "tabulate>=0.10.0",
     "colorama>=0.4.6",
     "cryptography>=46.0.0",
-    "keyring>=25.0.0",
+    "keyring>=25.7.0",
     "pytest>=9.0",
     "pylint>=4.0",
     "pytest-cov>=7.0"
